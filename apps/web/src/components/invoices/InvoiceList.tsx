@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import type { Client, Invoice, InvoiceStatus } from '@taxly/types'
 import { apiRequest } from '@/lib/api'
@@ -50,24 +51,50 @@ export function InvoiceList({}: InvoiceListProps) {
   const [tab, setTab] = useState<FilterTab>('toate')
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null)
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null)
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [stornoInvoice, setStornoInvoice] = useState<Invoice | null>(null)
+
+  // Dropdown portal state
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!token) return
+    loadInvoices()
+  }, [token])
+
+  function loadInvoices() {
+    if (!token) return
+    setLoading(true)
+    setError(null)
     apiRequest<{ invoices: Invoice[] }>('/api/invoices', { token })
       .then(data => setInvoices(data.invoices))
       .catch(err => setError(err instanceof Error ? err.message : 'Eroare la încărcarea facturilor'))
       .finally(() => setLoading(false))
-  }, [token])
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
     if (!openDropdown) return
-    function close() { setOpenDropdown(null) }
+    function close(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null)
+      }
+    }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [openDropdown])
+
+  function openActionsDropdown(e: React.MouseEvent<HTMLButtonElement>, invId: string) {
+    e.stopPropagation()
+    if (openDropdown === invId) { setOpenDropdown(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDropdownPos({
+      top: rect.bottom + window.scrollY + 4,
+      right: window.innerWidth - rect.right,
+    })
+    setOpenDropdown(invId)
+  }
 
   function handlePaid(updated: Invoice) {
     setInvoices(prev => prev.map(inv => inv._id === updated._id ? updated : inv))
@@ -124,7 +151,62 @@ export function InvoiceList({}: InvoiceListProps) {
         />
       )}
 
-      {/* Invoice preview modal */}
+      {/* Dropdown portal — rendered outside table to avoid overflow clipping */}
+      {openDropdown && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+          className="min-w-[200px] bg-white border border-[#E2EAF4] rounded-xl shadow-xl py-1 overflow-hidden"
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {(() => {
+            const inv = invoices.find(i => i._id === openDropdown)
+            if (!inv) return null
+            const isPayable = PAYABLE_STATUSES.includes(inv.status)
+            const isCancelled = inv.status === 'anulata'
+            return (
+              <>
+                {isPayable && (
+                  <button
+                    className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
+                    onClick={() => { setOpenDropdown(null); setPaymentInvoice(inv) }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" stroke="currentColor"/></svg>
+                    Încasează
+                  </button>
+                )}
+                {!isCancelled && (
+                  <>
+                    <button
+                      className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
+                      onClick={() => { setOpenDropdown(null); setStornoInvoice(inv) }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14l-4-4 4-4M5 10h11a4 4 0 010 8h-1" stroke="currentColor"/></svg>
+                      Emite notă de credit
+                    </button>
+                    <button
+                      className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
+                      onClick={() => { setOpenDropdown(null); router.push('/invoices/new') }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" stroke="currentColor"/></svg>
+                      Re-emite / Duplicat
+                    </button>
+                    <div className="mx-3 my-1 border-t border-[#F4F6FB]" />
+                    <button
+                      className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-red-50 cursor-pointer w-full text-left text-red-600"
+                      onClick={() => { setOpenDropdown(null); handleCancel(inv) }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor"/></svg>
+                      Anulează factura
+                    </button>
+                  </>
+                )}
+              </>
+            )
+          })()}
+        </div>,
+        document.body
+      )}
       {previewInvoice && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -218,7 +300,12 @@ export function InvoiceList({}: InvoiceListProps) {
         )}
 
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={loadInvoices} className="ml-4 text-xs font-semibold underline hover:no-underline cursor-pointer">
+              Reîncearcă
+            </button>
+          </div>
         )}
 
         {!loading && !error && (
@@ -286,53 +373,14 @@ export function InvoiceList({}: InvoiceListProps) {
                         </span>
                       </td>
                       {/* Actions column — stopPropagation so row click doesn't fire */}
-                      <td className="py-3 text-right relative" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 text-right" onClick={e => e.stopPropagation()}>
                         <button
-                          onMouseDown={e => {
-                            e.stopPropagation()
-                            setOpenDropdown(openDropdown === inv._id ? null : inv._id)
-                          }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-[#E2EAF4] bg-white px-3 py-1 text-xs font-semibold text-[#5A6A8A] hover:bg-[#F4F6FB] hover:text-taxly-700 transition-colors"
+                          onClick={(e) => openActionsDropdown(e, inv._id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#E2EAF4] bg-white px-3 py-1 text-xs font-semibold text-[#5A6A8A] hover:bg-[#F4F6FB] hover:text-taxly-700 transition-colors cursor-pointer"
                         >
-                          Acțiuni <span className="text-[10px]">▾</span>
+                          Acțiuni
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9l6 6 6-6" stroke="currentColor"/></svg>
                         </button>
-                        {openDropdown === inv._id && (
-                          <div
-                            className="absolute right-0 top-full mt-1 z-10 min-w-[190px] bg-white border border-[#E2EAF4] rounded-xl shadow-lg py-1 overflow-hidden"
-                            onMouseDown={e => e.stopPropagation()}
-                          >
-                            {isPayable && (
-                              <button
-                                className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
-                                onClick={() => { setOpenDropdown(null); setPaymentInvoice(inv) }}
-                              >
-                                <span>✓</span> Încasează
-                              </button>
-                            )}
-                            {!isCancelled && (
-                              <>
-                                <button
-                                  className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
-                                  onClick={() => { setOpenDropdown(null); setStornoInvoice(inv) }}
-                                >
-                                  <span>↩</span> Emite notă de credit
-                                </button>
-                                <button
-                                  className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
-                                  onClick={() => { setOpenDropdown(null); router.push('/invoices/new') }}
-                                >
-                                  <span>↗</span> Re-emite
-                                </button>
-                                <button
-                                  className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-red-50 cursor-pointer w-full text-left text-red-600"
-                                  onClick={() => { setOpenDropdown(null); handleCancel(inv) }}
-                                >
-                                  <span>✕</span> Anulează factura
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
                       </td>
                     </tr>
                   )
