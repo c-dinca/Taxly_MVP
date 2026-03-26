@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { OnboardingData } from '@/app/onboarding/page'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   data: OnboardingData
@@ -68,26 +69,14 @@ export default function StepAddress({ data, onNext, onBack }: Props) {
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#FF5252]">{error}</div>
         )}
 
-        <button
-          onClick={handleNext}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-2.5 text-sm font-semibold text-white hover:bg-taxly-800"
-        >
+        <Button onClick={handleNext} className="w-full py-3">
           Continuă
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor"/>
-          </svg>
-        </button>
+        </Button>
       </div>
 
-      <button
-        onClick={onBack}
-        className="mt-4 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
-        </svg>
+      <Button variant="ghost" onClick={onBack} className="w-full py-2 mt-4">
         Înapoi
-      </button>
+      </Button>
     </div>
   )
 }

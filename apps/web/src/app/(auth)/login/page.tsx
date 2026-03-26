@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LoginSchema } from '@taxly/schemas'
+import { Button } from '@/components/ui/Button'
 
 function LogoMark({ white = false }: { white?: boolean }) {
   return (
@@ -54,7 +55,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left — brand panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-taxly-700 flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-[380px] lg:shrink-0 flex-col justify-between p-10" style={{background: 'linear-gradient(160deg, #002B67 0%, #004AAD 100%)'}}>
         <LogoMark white />
         <div className="space-y-8">
           <h2 className="text-2xl font-bold text-white leading-snug">
@@ -122,13 +123,9 @@ export default function LoginPage() {
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#FF5252]">{error}</div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-taxly-700 py-2.5 text-sm font-semibold text-white transition hover:bg-taxly-800 disabled:opacity-60"
-            >
-              {loading ? 'Se încarcă...' : 'Intră în cont'}
-            </button>
+            <Button type="submit" loading={loading} hasError={!!error} className="w-full py-2.5">
+              Intră în cont
+            </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-[#5A6A8A]">

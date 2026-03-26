@@ -1,7 +1,9 @@
 import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
   const session = await auth()
+  if (!session) redirect('/login')
 
   return (
     <div className="min-h-screen bg-[#F4F6FB]">

@@ -1,4 +1,5 @@
 import type { OnboardingData } from '@/app/onboarding/page'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   data: OnboardingData
@@ -47,37 +48,13 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
         <Row label="Adresă" value={data.address ?? '—'} />
       </div>
 
-      <button
-        onClick={() => onFinish({})}
-        disabled={saving}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-3 text-sm font-semibold text-white hover:bg-taxly-800 disabled:opacity-60"
-      >
-        {saving ? (
-          <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10"/>
-            </svg>
-            Se salvează...
-          </>
-        ) : (
-          <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 6L9 17l-5-5" stroke="currentColor"/>
-            </svg>
-            Finalizează și accesează Taxly
-          </>
-        )}
-      </button>
+      <Button loading={saving} onClick={() => onFinish({})} className="w-full py-3">
+        Finalizează și accesează Taxly
+      </Button>
 
-      <button
-        onClick={onBack}
-        className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
-        </svg>
+      <Button variant="ghost" onClick={onBack} className="w-full py-2 mt-4">
         Modifică datele
-      </button>
+      </Button>
     </div>
   )
 }

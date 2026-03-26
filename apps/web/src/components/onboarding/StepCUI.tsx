@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { OnboardingData } from '@/app/onboarding/page'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   data: OnboardingData
@@ -91,22 +92,15 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
               placeholder="ex: 12345678"
               className="flex-1 rounded-lg border border-[#E2EAF4] bg-white px-3 py-2.5 text-sm text-[#0D1B3E] placeholder:text-[#8FA3C0] focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/15"
             />
-            <button
-              onClick={verifyCUI}
-              disabled={checking || !cui.trim()}
-              className="flex items-center gap-2 rounded-lg border border-taxly-700 px-4 py-2.5 text-sm font-semibold text-taxly-700 hover:bg-taxly-50 disabled:opacity-60"
-            >
-              {checking ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" stroke="currentColor"/>
-                </svg>
-              )}
-              {checking ? 'Se verifică...' : 'Verifică ANAF'}
-            </button>
+            <Button
+                loading={checking}
+                disabled={!cui.trim()}
+                variant="secondary"
+                className="px-4 py-2"
+                onClick={verifyCUI}
+              >
+                Verifică CUI
+              </Button>
           </div>
         </div>
 
@@ -132,27 +126,14 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
           </div>
         )}
 
-        <button
-          onClick={handleNext}
-          disabled={!cui.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-2.5 text-sm font-semibold text-white hover:bg-taxly-800 disabled:opacity-60"
-        >
+        <Button onClick={handleNext} disabled={!cui.trim()} className="w-full py-3">
           Continuă
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor"/>
-          </svg>
-        </button>
+        </Button>
       </div>
 
-      <button
-        onClick={onBack}
-        className="mt-4 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
-        </svg>
+      <Button variant="ghost" onClick={onBack} className="w-full py-2 mt-4">
         Înapoi
-      </button>
+      </Button>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import type { OnboardingData } from '@/app/onboarding/page'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   data: OnboardingData
@@ -64,15 +65,9 @@ export default function StepFiscalRegime({ data, onNext, onBack }: Props) {
         })}
       </div>
 
-      <button
-        onClick={onBack}
-        className="mt-6 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
-        </svg>
+      <Button variant="ghost" onClick={onBack} className="w-full py-2 mt-6">
         Înapoi
-      </button>
+      </Button>
     </div>
   )
 }
