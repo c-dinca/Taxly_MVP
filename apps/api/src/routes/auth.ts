@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword } from '../utils/crypto'
 import { RegisterSchema, LoginSchema } from '@taxly/schemas'
 
 const TRIAL_DAYS = 30
-const ACCESS_TOKEN_TTL = '15m'
+const ACCESS_TOKEN_TTL = '1h'
 const REFRESH_TOKEN_TTL = '30d'
 
 interface JwtPayload {

@@ -4,12 +4,12 @@ import { useState } from 'react'
 import type { Client, CreateClientDto } from '@taxly/types'
 import { Button } from '@/components/ui/Button'
 import { apiRequest } from '@/lib/api'
+import { useAuthToken } from '@/hooks/useAuthToken'
 
 interface ClientModalProps {
   open: boolean
   onClose: () => void
   onSaved: (client: Client) => void
-  token: string
   editClient?: Client | null
 }
 
@@ -25,7 +25,8 @@ const EMPTY: CreateClientDto = {
   bankName: '',
 }
 
-export function ClientModal({ open, onClose, onSaved, token, editClient }: ClientModalProps) {
+export function ClientModal({ open, onClose, onSaved, editClient }: ClientModalProps) {
+  const token = useAuthToken()
   const [form, setForm] = useState<CreateClientDto>(
     editClient
       ? {
@@ -52,6 +53,7 @@ export function ClientModal({ open, onClose, onSaved, token, editClient }: Clien
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!token) return
     setError(null)
     setLoading(true)
     try {
@@ -64,18 +66,18 @@ export function ClientModal({ open, onClose, onSaved, token, editClient }: Clien
         bankAccount: form.bankAccount || undefined,
         bankName: form.bankName || undefined,
       }
-      const saved = editClient
-        ? await apiRequest<Client>(`/api/clients/${editClient._id}`, {
+      const res = editClient
+        ? await apiRequest<{ client: Client }>(`/api/clients/${editClient._id}`, {
             method: 'PUT',
             body: JSON.stringify(body),
             token,
           })
-        : await apiRequest<Client>('/api/clients', {
+        : await apiRequest<{ client: Client }>('/api/clients', {
             method: 'POST',
             body: JSON.stringify(body),
             token,
           })
-      onSaved(saved)
+      onSaved(res.client)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Eroare necunoscută')
     } finally {

@@ -1,6 +1,7 @@
 export type InvoiceType = 'factura' | 'deviz' | 'proforma' | 'avans' | 'storno'
 export type InvoiceStatus = 'draft' | 'emisa' | 'trimisa_anaf' | 'validata_anaf' | 'respinsa_anaf' | 'incasata' | 'anulata'
 export type Currency = 'RON' | 'EUR' | 'USD'
+export type PaymentMethod = 'numerar' | 'transfer' | 'card' | 'cec' | 'altele'
 
 export interface InvoiceLine {
   description: string
@@ -21,6 +22,20 @@ export interface InvoiceTotals {
   totalRON: number
 }
 
+export interface InvoiceAcompte {
+  _id: string
+  description: string
+  date: string
+  amount: number
+}
+
+export interface InvoicePayment {
+  date: string
+  method: PaymentMethod
+  notes?: string
+  amountPaid: number
+}
+
 export interface EFacturaStatus {
   uploadId?: string
   indexIncarcare?: string
@@ -36,15 +51,20 @@ export interface Invoice {
   userId: string
   number: string
   series: string
+  fullNumber: string
   type: InvoiceType
   status: InvoiceStatus
   issueDate: string
   dueDate?: string
   client: InvoiceClient
   lines: InvoiceLine[]
+  remiseGenerala: number
+  acomptes: InvoiceAcompte[]
   totals: InvoiceTotals
   notes?: string
-  eFactura: EFacturaStatus
+  internalNote?: string
+  payment?: InvoicePayment
+  eFactura?: EFacturaStatus
   pdfUrl?: string
   xmlContent?: string
   createdAt: string
@@ -52,6 +72,7 @@ export interface Invoice {
 }
 
 export interface InvoiceClient {
+  _id: string
   name: string
   cui?: string
   cnp?: string
@@ -63,10 +84,14 @@ export interface InvoiceClient {
 
 export interface CreateInvoiceDto {
   type: InvoiceType
+  status: 'draft' | 'emisa'
   issueDate: string
   dueDate?: string
   clientId: string
   lines: Omit<InvoiceLine, 'total' | 'vatAmount'>[]
   currency: Currency
   notes?: string
+  internalNote?: string
+  remiseGenerala: number
+  acomptes: { description: string; date: string; amount: number }[]
 }

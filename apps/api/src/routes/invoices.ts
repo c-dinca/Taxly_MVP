@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import mongoose from 'mongoose'
 import { Invoice } from '../models/Invoice'
 import { Client } from '../models/Client'
-import { CreateInvoiceSchema } from '@taxly/schemas'
+import { CreateInvoiceSchema, PaymentSchema } from '@taxly/schemas'
 import { getCachedRates } from '../services/bnr'
 import { z } from 'zod'
 
@@ -34,6 +34,45 @@ async function getNextInvoiceNumber(userId: string, year: number): Promise<numbe
     .select('number')
 
   return lastInvoice ? lastInvoice.number + 1 : 1
+}
+
+async function buildInvoiceFields(data: ReturnType<typeof CreateInvoiceSchema.parse>, client: { _id: unknown; name: string; cui?: string; address: string; email?: string; county?: string; country: string }) {
+  const lines = data.lines.map(line => {
+    const total = parseFloat((line.quantity * line.unitPrice).toFixed(2))
+    const vatAmount = parseFloat((total * line.vatRate / 100).toFixed(2))
+    return { ...line, total, vatAmount }
+  })
+
+  const factor = 1 - data.remiseGenerala / 100
+  const subtotal = parseFloat((lines.reduce((acc, l) => acc + l.total, 0) * factor).toFixed(2))
+  const vatTotal = parseFloat(lines.reduce((acc, l) => acc + (l.total * factor * l.vatRate / 100), 0).toFixed(2))
+  const total = parseFloat((subtotal + vatTotal).toFixed(2))
+
+  let exchangeRate: number | undefined
+  let totalRON = total
+  if (data.currency !== 'RON') {
+    const rates = await getCachedRates()
+    exchangeRate = rates[data.currency as 'EUR' | 'USD']
+    totalRON = parseFloat((total * exchangeRate).toFixed(2))
+  }
+
+  return {
+    lines,
+    subtotal,
+    vatTotal,
+    total,
+    totalRON,
+    exchangeRate,
+    clientSnapshot: {
+      _id: client._id,
+      name: client.name,
+      cui: client.cui,
+      address: client.address,
+      email: client.email,
+      county: client.county,
+      country: client.country,
+    },
+  }
 }
 
 export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
@@ -87,30 +126,11 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
       if (client.userId.toString() !== sub) return reply.forbidden('Acces interzis')
       if (!client.isActive) return reply.code(400).send({ error: 'Clientul este inactiv' })
 
-      // Calculate lines
-      const lines = data.lines.map(line => {
-        const total = parseFloat((line.quantity * line.unitPrice).toFixed(2))
-        const vatAmount = parseFloat((total * line.vatRate / 100).toFixed(2))
-        return { ...line, total, vatAmount }
-      })
-
-      const subtotal = parseFloat(lines.reduce((acc, l) => acc + l.total, 0).toFixed(2))
-      const vatTotal = parseFloat(lines.reduce((acc, l) => acc + l.vatAmount, 0).toFixed(2))
-      const total = parseFloat((subtotal + vatTotal).toFixed(2))
-
-      // Exchange rate
-      let exchangeRate: number | undefined
-      let totalRON = total
-      if (data.currency !== 'RON') {
-        const rates = await getCachedRates()
-        exchangeRate = rates[data.currency as 'EUR' | 'USD']
-        totalRON = parseFloat((total * exchangeRate).toFixed(2))
-      }
-
-      // Auto-generate invoice number
       const year = new Date(data.issueDate).getFullYear()
       const number = await getNextInvoiceNumber(sub, year)
       const fullNumber = `TAXLY-${year}-${String(number).padStart(4, '0')}`
+
+      const built = await buildInvoiceFields(data, client, sub)
 
       const invoice = await Invoice.create({
         userId: sub,
@@ -118,26 +138,21 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         series: 'TAXLY',
         fullNumber,
         type: data.type,
-        status: 'emisa',
+        status: data.status,
         issueDate: new Date(data.issueDate),
         dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        client: {
-          _id: client._id,
-          name: client.name,
-          cui: client.cui,
-          address: client.address,
-          email: client.email,
-          county: client.county,
-          country: client.country,
-        },
-        lines,
-        subtotal,
-        vatTotal,
-        total,
+        client: built.clientSnapshot,
+        lines: built.lines,
+        subtotal: built.subtotal,
+        vatTotal: built.vatTotal,
+        total: built.total,
         currency: data.currency,
-        exchangeRate,
-        totalRON,
+        exchangeRate: built.exchangeRate,
+        totalRON: built.totalRON,
+        remiseGenerala: data.remiseGenerala,
+        acomptes: data.acomptes.map(a => ({ ...a, date: new Date(a.date) })),
         notes: data.notes,
+        internalNote: data.internalNote,
       })
 
       return reply.code(201).send({ invoice })
@@ -164,9 +179,78 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     },
   )
 
+  // PUT /api/invoices/:id — full update, only allowed for draft
+  app.put<IdParams>(
+    '/:id',
+    { preHandler: [app.authenticate] },
+    async (request: FastifyRequest<IdParams>, reply: FastifyReply) => {
+      const { sub } = request.user as JwtUser
+      const { id } = request.params
+
+      if (!mongoose.isValidObjectId(id)) {
+        return reply.code(400).send({ error: 'ID invalid' })
+      }
+
+      const invoice = await Invoice.findById(id)
+      if (!invoice) return reply.notFound('Factura nu a fost găsită')
+      if (invoice.userId.toString() !== sub) return reply.forbidden('Acces interzis')
+      if (invoice.status !== 'draft') {
+        return reply.code(400).send({ error: 'Doar facturile draft pot fi modificate' })
+      }
+
+      const result = CreateInvoiceSchema.safeParse(request.body)
+      if (!result.success) {
+        return reply.badRequest(result.error.issues[0]?.message ?? 'Date invalide')
+      }
+      const data = result.data
+
+      // Status transition guard: from draft, only draft or emisa allowed via this route
+      if (data.status !== 'draft' && data.status !== 'emisa') {
+        return reply.badRequest('Status invalid pentru această operație')
+      }
+
+      if (!mongoose.isValidObjectId(data.clientId)) {
+        return reply.code(400).send({ error: 'clientId invalid' })
+      }
+
+      const client = await Client.findById(data.clientId)
+      if (!client) return reply.notFound('Clientul nu a fost găsit')
+      if (client.userId.toString() !== sub) return reply.forbidden('Acces interzis')
+      if (!client.isActive) return reply.code(400).send({ error: 'Clientul este inactiv' })
+
+      const built = await buildInvoiceFields(data, client, sub)
+
+      const updated = await Invoice.findByIdAndUpdate(
+        id,
+        {
+          type: data.type,
+          status: data.status,
+          issueDate: new Date(data.issueDate),
+          dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+          client: built.clientSnapshot,
+          lines: built.lines,
+          subtotal: built.subtotal,
+          vatTotal: built.vatTotal,
+          total: built.total,
+          currency: data.currency,
+          exchangeRate: built.exchangeRate,
+          totalRON: built.totalRON,
+          remiseGenerala: data.remiseGenerala,
+          acomptes: data.acomptes.map(a => ({ ...a, date: new Date(a.date) })),
+          notes: data.notes,
+          internalNote: data.internalNote,
+        },
+        { new: true },
+      )
+
+      return reply.send({ invoice: updated })
+    },
+  )
+
   // PUT /api/invoices/:id/status
   const UpdateStatusSchema = z.object({
     status: z.enum(['draft', 'emisa', 'trimisa_anaf', 'validata_anaf', 'respinsa_anaf', 'incasata', 'anulata']),
+    payment: PaymentSchema.optional(),
   })
 
   app.put<IdParams>(
@@ -189,7 +273,18 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         return reply.badRequest(result.error.issues[0]?.message ?? 'Status invalid')
       }
 
-      const updated = await Invoice.findByIdAndUpdate(id, { status: result.data.status }, { new: true })
+      const { status, payment } = result.data
+
+      if (status === 'incasata' && !payment) {
+        return reply.badRequest('Detaliile de plată sunt obligatorii pentru status Încasată')
+      }
+
+      const update: Record<string, unknown> = { status }
+      if (status === 'incasata' && payment) {
+        update['payment'] = { ...payment, date: new Date(payment.date) }
+      }
+
+      const updated = await Invoice.findByIdAndUpdate(id, update, { new: true })
       return reply.send({ invoice: updated })
     },
   )

@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import type { Client } from '@taxly/types'
 import { Button } from '@/components/ui/Button'
 import { apiRequest } from '@/lib/api'
+import { useAuthToken } from '@/hooks/useAuthToken'
 import { ClientModal } from './ClientModal'
 
-interface ClientListProps {
-  token: string
-}
+interface ClientListProps {}
 
-export function ClientList({ token }: ClientListProps) {
+export function ClientList({}: ClientListProps) {
+  const token = useAuthToken()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,11 +25,12 @@ export function ClientList({ token }: ClientListProps) {
   }, [])
 
   async function loadClients() {
+    if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const data = await apiRequest<Client[]>('/api/clients', { token })
-      setClients(data)
+      const data = await apiRequest<{ clients: Client[] }>('/api/clients', { token })
+      setClients(data.clients)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Eroare la încărcarea clienților')
     } finally {
@@ -40,7 +41,7 @@ export function ClientList({ token }: ClientListProps) {
   async function handleDeactivate(client: Client) {
     setDeactivating(client._id)
     try {
-      await apiRequest<Client>(`/api/clients/${client._id}`, {
+      await apiRequest<{ client: Client }>(`/api/clients/${client._id}`, {
         method: 'PUT',
         body: JSON.stringify({ isActive: false }),
         token,
@@ -93,7 +94,6 @@ export function ClientList({ token }: ClientListProps) {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditClient(null) }}
         onSaved={handleSaved}
-        token={token}
         editClient={editClient}
       />
 

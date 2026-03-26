@@ -10,6 +10,19 @@ export interface IInvoiceLine {
   vatAmount: number
 }
 
+export interface IInvoiceAcompte {
+  description: string
+  date: Date
+  amount: number
+}
+
+export interface IInvoicePayment {
+  date: Date
+  method: string
+  notes?: string
+  amountPaid: number
+}
+
 export interface IInvoice extends Document {
   _id: mongoose.Types.ObjectId
   userId: mongoose.Types.ObjectId
@@ -30,6 +43,8 @@ export interface IInvoice extends Document {
     country: string
   }
   lines: IInvoiceLine[]
+  remiseGenerala: number
+  acomptes: IInvoiceAcompte[]
   subtotal: number
   vatTotal: number
   total: number
@@ -37,9 +52,19 @@ export interface IInvoice extends Document {
   exchangeRate?: number
   totalRON: number
   notes?: string
+  internalNote?: string
+  payment?: IInvoicePayment
   pdfPath?: string
   createdAt: Date
   updatedAt: Date
+  totals?: {
+    subtotal: number
+    vatTotal: number
+    total: number
+    currency: string
+    exchangeRate?: number
+    totalRON: number
+  }
 }
 
 const InvoiceLineSchema = new Schema<IInvoiceLine>(
@@ -51,6 +76,25 @@ const InvoiceLineSchema = new Schema<IInvoiceLine>(
     unit: { type: String, default: 'buc' },
     total: { type: Number, required: true },
     vatAmount: { type: Number, required: true },
+  },
+  { _id: false },
+)
+
+const AcompteSchema = new Schema<IInvoiceAcompte>(
+  {
+    description: { type: String, default: '' },
+    date: { type: Date, required: true },
+    amount: { type: Number, required: true },
+  },
+  { _id: true },
+)
+
+const PaymentSchema = new Schema<IInvoicePayment>(
+  {
+    date: { type: Date, required: true },
+    method: { type: String, required: true },
+    notes: String,
+    amountPaid: { type: Number, required: true },
   },
   { _id: false },
 )
@@ -83,6 +127,8 @@ const InvoiceSchema = new Schema<IInvoice>(
       country: { type: String, default: 'RO' },
     },
     lines: [InvoiceLineSchema],
+    remiseGenerala: { type: Number, default: 0 },
+    acomptes: { type: [AcompteSchema], default: [] },
     subtotal: { type: Number, required: true },
     vatTotal: { type: Number, required: true },
     total: { type: Number, required: true },
@@ -90,10 +136,23 @@ const InvoiceSchema = new Schema<IInvoice>(
     exchangeRate: Number,
     totalRON: { type: Number, required: true },
     notes: String,
+    internalNote: String,
+    payment: PaymentSchema,
     pdfPath: String,
   },
-  { timestamps: true },
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 )
+
+InvoiceSchema.virtual('totals').get(function (this: IInvoice) {
+  return {
+    subtotal: this.subtotal,
+    vatTotal: this.vatTotal,
+    total: this.total,
+    currency: this.currency,
+    exchangeRate: this.exchangeRate,
+    totalRON: this.totalRON,
+  }
+})
 
 InvoiceSchema.index({ userId: 1, number: 1 }, { unique: true })
 

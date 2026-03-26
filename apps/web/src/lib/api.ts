@@ -14,8 +14,9 @@ export async function apiRequest<T>(
     },
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Eroare necunoscută' }))
-    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`)
+    const err = await res.json().catch(() => ({ message: 'Eroare necunoscută' }))
+    const e = err as { message?: string; error?: string }
+    throw new Error(e.message ?? e.error ?? `HTTP ${res.status}`)
   }
   return res.json() as Promise<T>
 }
