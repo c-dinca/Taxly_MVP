@@ -21,22 +21,23 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
   return (
     <div>
       <div className="mb-6 flex items-center justify-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-          <span className="text-3xl">🎉</span>
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-taxly-100 border border-taxly-300/40">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 12l2 2 4-4" stroke="#664930"/>
+            <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2z" stroke="#664930"/>
+          </svg>
         </div>
       </div>
 
-      <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">
+      <h2 className="mb-2 text-center text-2xl font-bold text-taxly-900">
         Totul arată bine!
       </h2>
-      <p className="mb-8 text-center text-gray-500">
+      <p className="mb-8 text-center text-taxly-500">
         Verifică datele înainte de a finaliza configurarea contului.
       </p>
 
-      <div className="mb-8 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-        {data.name && (
-          <Row label="Denumire" value={data.name} />
-        )}
+      <div className="mb-8 divide-y divide-taxly-300/20 rounded-xl border border-taxly-300/40 bg-white">
+        {data.name && <Row label="Denumire" value={data.name} />}
         <Row label="Tip entitate" value={LABELS[data.entityType ?? ''] ?? data.entityType ?? '—'} />
         <Row label="Regim fiscal" value={LABELS[data.fiscalRegime ?? ''] ?? data.fiscalRegime ?? '—'} />
         <Row label="CUI" value={data.cui ?? '—'} />
@@ -49,13 +50,33 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
       <button
         onClick={() => onFinish({})}
         disabled={saving}
-        className="w-full rounded-lg bg-taxly-700 py-3 text-sm font-semibold text-white hover:bg-taxly-800 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-3 text-sm font-semibold text-taxly-100 hover:bg-taxly-800 disabled:opacity-60"
       >
-        {saving ? 'Se salvează...' : '✓ Finalizează și accesează Taxly'}
+        {saving ? (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10"/>
+            </svg>
+            Se salvează...
+          </>
+        ) : (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor"/>
+            </svg>
+            Finalizează și accesează Taxly
+          </>
+        )}
       </button>
 
-      <button onClick={onBack} className="mt-4 w-full text-sm font-medium text-gray-500 hover:text-taxly-700">
-        ← Modifică datele
+      <button
+        onClick={onBack}
+        className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm font-medium text-taxly-500 hover:text-taxly-700"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
+        </svg>
+        Modifică datele
       </button>
     </div>
   )
@@ -64,8 +85,8 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between px-4 py-3">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span className="text-sm font-medium text-gray-900">{value}</span>
+      <span className="text-sm text-taxly-500">{label}</span>
+      <span className="text-sm font-medium text-taxly-900">{value}</span>
     </div>
   )
 }

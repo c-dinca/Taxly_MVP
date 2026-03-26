@@ -122,11 +122,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         fiscalRegime: z.enum(['real', 'norma_venit']),
         cui: z.string().min(2).max(12),
         cnp: z.string().length(13).optional(),
-        caenCode: z.string().length(4),
+        caenCode: z.string().length(4).optional(),
         vatStatus: z.enum(['neplatitor', 'platitor', 'platitor_special']),
         county: z.string().min(2),
         address: z.string().min(5),
         tradeRegisterNumber: z.string().optional(),
+        name: z.string().optional(),
         complete: z.boolean().optional(),
       })
 
