@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { DashboardHeader } from '@/components/layout/DashboardHeader'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -7,25 +9,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6FB]">
-      <header className="bg-white border-b border-[#E2EAF4] px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-taxly-700">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M4 6h16M4 12h16M4 18h10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-                <circle cx="19" cy="18" r="3" fill="#F79A36"/>
-              </svg>
-            </div>
-            <span className="text-base font-bold tracking-tight text-[#0D1B3E]">Taxly</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#5A6A8A]">{session.user?.email}</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-taxly-100 text-sm font-semibold text-taxly-700">
-              {session.user?.name?.charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader email={session.user?.email} name={session.user?.name} />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
@@ -73,6 +57,55 @@ export default async function DashboardPage() {
           />
         </div>
 
+        {/* Quick navigation cards */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <Link href="/clients" className="group rounded-xl border border-[#E2EAF4] bg-white p-5 shadow-sm hover:border-taxly-300 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-taxly-50 group-hover:bg-taxly-100 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-700">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor"/>
+                  <circle cx="9" cy="7" r="4" stroke="currentColor"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#0D1B3E]">Clienți</p>
+                <p className="text-xs text-[#8FA3C0]">Gestionează clienții</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/invoices" className="group rounded-xl border border-[#E2EAF4] bg-white p-5 shadow-sm hover:border-taxly-300 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-taxly-50 group-hover:bg-taxly-100 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-700">
+                  <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor"/>
+                  <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#0D1B3E]">Facturi</p>
+                <p className="text-xs text-[#8FA3C0]">Vezi toate facturile</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/invoices/new" className="group rounded-xl border border-[#E2EAF4] bg-white p-5 shadow-sm hover:border-accent-500 hover:shadow-md transition-all">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-500/10 group-hover:bg-accent-500/20 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="text-accent-600">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#0D1B3E]">Factură nouă</p>
+                <p className="text-xs text-[#8FA3C0]">Emite o factură</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
         <div className="mt-8 rounded-xl bg-taxly-700 px-6 py-5">
           <div className="flex items-start gap-4">
             <div className="shrink-0 text-accent-500 mt-0.5">
@@ -82,7 +115,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Funcționalitățile sunt în construcție</p>
-              <p className="mt-0.5 text-sm text-taxly-100">Facturare, calculator fiscal și e-Factura vor fi disponibile în curând.</p>
+              <p className="mt-0.5 text-sm text-taxly-100">Calculator fiscal și e-Factura vor fi disponibile în curând.</p>
             </div>
           </div>
         </div>

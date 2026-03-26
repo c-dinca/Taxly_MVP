@@ -1,11 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import { verifyCUI } from '../services/anaf'
+import { getCachedRates } from '../services/bnr'
 
 interface CuiParams {
   Params: { cui: string }
 }
 
 export async function utilRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/status', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+
   app.get<CuiParams>(
     '/verify-cui/:cui',
     { preHandler: [app.authenticate] },
@@ -17,4 +20,9 @@ export async function utilRoutes(app: FastifyInstance): Promise<void> {
       return reply.send(result)
     },
   )
+
+  app.get('/bnr-rates', async (_request, reply) => {
+    const rates = await getCachedRates()
+    return reply.send(rates)
+  })
 }

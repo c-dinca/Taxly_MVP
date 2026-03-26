@@ -12,6 +12,7 @@ import { registerAuthDecorator } from './plugins/auth'
 import { authRoutes } from './routes/auth'
 import { invoiceRoutes } from './routes/invoices'
 import { clientRoutes } from './routes/clients'
+import { catalogRoutes } from './routes/catalog'
 import { fiscalRoutes } from './routes/fiscal'
 import { utilRoutes } from './routes/utils'
 
@@ -38,6 +39,7 @@ async function main() {
   await app.register(authRoutes, { prefix: '/api/auth' })
   await app.register(invoiceRoutes, { prefix: '/api/invoices' })
   await app.register(clientRoutes, { prefix: '/api/clients' })
+  await app.register(catalogRoutes, { prefix: '/api/catalog' })
   await app.register(fiscalRoutes, { prefix: '/api/fiscal' })
   await app.register(utilRoutes, { prefix: '/api/utils' })
 
