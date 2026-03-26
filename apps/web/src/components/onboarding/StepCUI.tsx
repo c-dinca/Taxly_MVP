@@ -73,14 +73,14 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
 
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900">Date fiscale</h2>
-      <p className="mb-8 text-stone-500">
+      <h2 className="mb-2 text-2xl font-bold tracking-tight text-[#0D1B3E]">Date fiscale</h2>
+      <p className="mb-8 text-[#5A6A8A]">
         Introduci CUI-ul și verificăm automat datele din ANAF.
       </p>
 
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-stone-700">
+          <label className="mb-1.5 block text-sm font-medium text-[#0D1B3E]">
             CUI / Cod fiscal
           </label>
           <div className="flex gap-2">
@@ -89,12 +89,12 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
               value={cui}
               onChange={e => setCui(e.target.value)}
               placeholder="ex: 12345678"
-              className="flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/20"
+              className="flex-1 rounded-lg border border-[#E2EAF4] bg-white px-3 py-2.5 text-sm text-[#0D1B3E] placeholder:text-[#8FA3C0] focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/15"
             />
             <button
               onClick={verifyCUI}
               disabled={checking || !cui.trim()}
-              className="flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60"
+              className="flex items-center gap-2 rounded-lg border border-taxly-700 px-4 py-2.5 text-sm font-semibold text-taxly-700 hover:bg-taxly-50 disabled:opacity-60"
             >
               {checking ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin">
@@ -111,21 +111,21 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#FF5252]">{error}</div>
         )}
 
         {anafData && (
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 space-y-2">
+          <div className="rounded-xl border border-taxly-100 bg-taxly-50 p-4 space-y-2">
             <div className="flex items-center gap-2 mb-3">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 6L9 17l-5-5" stroke="#664930"/>
+                <path d="M20 6L9 17l-5-5" stroke="#004AAD"/>
               </svg>
-              <span className="text-sm font-semibold text-stone-700">Găsit în ANAF</span>
+              <span className="text-sm font-semibold text-taxly-700">Găsit în ANAF</span>
             </div>
-            <p className="text-sm text-stone-700"><span className="font-medium">Denumire:</span> {anafData.name}</p>
-            <p className="text-sm text-stone-600"><span className="font-medium">Adresă:</span> {anafData.address}</p>
-            <p className="text-sm text-stone-600"><span className="font-medium">Cod CAEN:</span> {anafData.caenCode}</p>
-            <p className="text-sm text-stone-600">
+            <p className="text-sm text-[#0D1B3E]"><span className="font-medium">Denumire:</span> {anafData.name}</p>
+            <p className="text-sm text-[#5A6A8A]"><span className="font-medium">Adresă:</span> {anafData.address}</p>
+            <p className="text-sm text-[#5A6A8A]"><span className="font-medium">Cod CAEN:</span> {anafData.caenCode}</p>
+            <p className="text-sm text-[#5A6A8A]">
               <span className="font-medium">TVA:</span>{' '}
               {anafData.vatStatus === 'platitor' ? 'Înregistrat în scop TVA' : 'Neînregistrat TVA'}
             </p>
@@ -146,7 +146,7 @@ export default function StepCUI({ data, onNext, onBack, accessToken }: Props) {
 
       <button
         onClick={onBack}
-        className="mt-4 flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-600"
+        className="mt-4 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>

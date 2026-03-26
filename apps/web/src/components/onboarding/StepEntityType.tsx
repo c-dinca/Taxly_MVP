@@ -46,8 +46,8 @@ const OPTIONS = [
 export default function StepEntityType({ data, onNext }: Props) {
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900">Ce tip de entitate ai?</h2>
-      <p className="mb-8 text-stone-500">
+      <h2 className="mb-2 text-2xl font-bold tracking-tight text-[#0D1B3E]">Ce tip de entitate ai?</h2>
+      <p className="mb-8 text-[#5A6A8A]">
         Alegerea influențează modul de calcul al taxelor și registrele generate.
       </p>
 
@@ -58,16 +58,16 @@ export default function StepEntityType({ data, onNext }: Props) {
             <button
               key={opt.value}
               onClick={() => onNext({ entityType: opt.value })}
-              className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition ${
+              className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition ${
                 selected
-                  ? 'border-taxly-700 bg-taxly-50 ring-1 ring-taxly-700'
-                  : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300 hover:bg-stone-50'
+                  ? 'border-taxly-700 bg-taxly-50 ring-1 ring-taxly-700/20'
+                  : 'border-[#E2EAF4] bg-white hover:border-taxly-400 hover:shadow-sm'
               }`}
             >
-              <span className={selected ? 'text-taxly-700' : 'text-stone-400'}>{opt.icon}</span>
+              <span className={selected ? 'text-taxly-700' : 'text-[#2A86DB]'}>{opt.icon}</span>
               <div>
-                <div className="font-semibold text-stone-900">{opt.label}</div>
-                <div className="text-sm text-stone-500">{opt.desc}</div>
+                <div className="font-semibold text-[#0D1B3E]">{opt.label}</div>
+                <div className="text-sm text-[#5A6A8A]">{opt.desc}</div>
               </div>
             </button>
           )

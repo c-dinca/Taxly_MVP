@@ -36,8 +36,8 @@ const OPTIONS = [
 export default function StepFiscalRegime({ data, onNext, onBack }: Props) {
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900">Regim fiscal</h2>
-      <p className="mb-8 text-stone-500">
+      <h2 className="mb-2 text-2xl font-bold tracking-tight text-[#0D1B3E]">Regim fiscal</h2>
+      <p className="mb-8 text-[#5A6A8A]">
         Cum ești impozitat? Poți verifica în Declarația Unică depusă anterior.
       </p>
 
@@ -48,16 +48,16 @@ export default function StepFiscalRegime({ data, onNext, onBack }: Props) {
             <button
               key={opt.value}
               onClick={() => onNext({ fiscalRegime: opt.value })}
-              className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition ${
+              className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition ${
                 selected
-                  ? 'border-taxly-700 bg-taxly-50 ring-1 ring-taxly-700'
-                  : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300 hover:bg-stone-50'
+                  ? 'border-taxly-700 bg-taxly-50 ring-1 ring-taxly-700/20'
+                  : 'border-[#E2EAF4] bg-white hover:border-taxly-400 hover:shadow-sm'
               }`}
             >
-              <span className={selected ? 'text-taxly-700' : 'text-stone-400'}>{opt.icon}</span>
+              <span className={selected ? 'text-taxly-700' : 'text-[#2A86DB]'}>{opt.icon}</span>
               <div>
-                <div className="font-semibold text-stone-900">{opt.label}</div>
-                <div className="text-sm text-stone-500">{opt.desc}</div>
+                <div className="font-semibold text-[#0D1B3E]">{opt.label}</div>
+                <div className="text-sm text-[#5A6A8A]">{opt.desc}</div>
               </div>
             </button>
           )
@@ -66,7 +66,7 @@ export default function StepFiscalRegime({ data, onNext, onBack }: Props) {
 
       <button
         onClick={onBack}
-        className="mt-6 flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-600"
+        className="mt-6 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>

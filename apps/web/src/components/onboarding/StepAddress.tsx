@@ -29,18 +29,18 @@ export default function StepAddress({ data, onNext, onBack }: Props) {
     onNext({ county, address })
   }
 
-  const inputCls = "w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/20"
+  const inputCls = "w-full rounded-lg border border-[#E2EAF4] bg-white px-3 py-2.5 text-sm text-[#0D1B3E] placeholder:text-[#8FA3C0] focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/15"
 
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900">Adresă sediu</h2>
-      <p className="mb-8 text-stone-500">
+      <h2 className="mb-2 text-2xl font-bold tracking-tight text-[#0D1B3E]">Adresă sediu</h2>
+      <p className="mb-8 text-[#5A6A8A]">
         Adresa va apărea pe facturile emise, conform cerințelor legale.
       </p>
 
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-stone-700">Județ</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#0D1B3E]">Județ</label>
           <select
             value={county}
             onChange={e => setCounty(e.target.value)}
@@ -54,7 +54,7 @@ export default function StepAddress({ data, onNext, onBack }: Props) {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-stone-700">Adresă completă</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#0D1B3E]">Adresă completă</label>
           <textarea
             value={address}
             onChange={e => setAddress(e.target.value)}
@@ -65,7 +65,7 @@ export default function StepAddress({ data, onNext, onBack }: Props) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#FF5252]">{error}</div>
         )}
 
         <button
@@ -81,7 +81,7 @@ export default function StepAddress({ data, onNext, onBack }: Props) {
 
       <button
         onClick={onBack}
-        className="mt-4 flex items-center gap-1.5 text-sm text-stone-400 hover:text-stone-600"
+        className="mt-4 flex items-center gap-1.5 text-sm text-[#5A6A8A] hover:text-taxly-700"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>

@@ -1,27 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #1c1917;
+  --background: #F4F6FB;
+  --foreground: #0D1B3E;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 
-  /* Taxly accent — earthy brown, used sparingly */
-  --color-taxly-50:  #fdf8f4;
-  --color-taxly-100: #FFDBBB;
-  --color-taxly-200: #f0c9a0;
-  --color-taxly-300: #CCBEB1;
-  --color-taxly-400: #b8a89a;
-  --color-taxly-500: #997E67;
-  --color-taxly-600: #7d6553;
-  --color-taxly-700: #664930;
-  --color-taxly-800: #503a25;
-  --color-taxly-900: #3a2a1a;
+  /* Taxly Blue scale */
+  --color-taxly-50:  #EEF4FF;
+  --color-taxly-100: #CCDBEF;
+  --color-taxly-200: #99BAE0;
+  --color-taxly-300: #58CAF2;
+  --color-taxly-400: #2A86DB;
+  --color-taxly-500: #1A72C7;
+  --color-taxly-600: #0E5EAF;
+  --color-taxly-700: #004AAD;
+  --color-taxly-800: #003A8A;
+  --color-taxly-900: #002B67;
+
+  /* Orange accent */
+  --color-accent-400: #FFBE6F;
+  --color-accent-500: #F79A36;
+  --color-accent-600: #E8871F;
 }
 
 body {

@@ -76,44 +76,45 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-stone-50">
+    <div className="flex min-h-screen flex-col bg-[#F4F6FB]">
       {/* Header */}
-      <div className="border-b border-stone-200 bg-white px-6 py-4">
+      <div className="bg-white border-b border-[#E2EAF4] px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-900">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 6h18M3 12h18M3 18h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-taxly-700">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6h16M4 12h16M4 18h10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+                <circle cx="19" cy="18" r="3" fill="#F79A36"/>
               </svg>
             </div>
-            <span className="text-base font-bold tracking-tight text-stone-900">Taxly</span>
+            <span className="text-base font-bold tracking-tight text-[#0D1B3E]">Taxly</span>
           </div>
-          <span className="text-sm text-stone-500">
+          <span className="text-sm text-[#5A6A8A]">
             Pasul {step + 1} din {STEPS.length}
           </span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-0.5 bg-stone-100">
+      <div className="h-1 bg-[#E2EAF4]">
         <div
-          className="h-0.5 bg-taxly-700 transition-all duration-300"
+          className="h-1 bg-accent-500 transition-all duration-300"
           style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
         />
       </div>
 
       {/* Step labels */}
-      <div className="border-b border-stone-200 bg-white px-6 py-3">
+      <div className="border-b border-[#E2EAF4] bg-white px-6 py-3">
         <div className="mx-auto flex max-w-2xl justify-between">
           {STEPS.map((label, i) => (
             <span
               key={label}
               className={`text-xs font-medium ${
                 i === step
-                  ? 'text-stone-900'
+                  ? 'text-taxly-700 font-semibold'
                   : i < step
-                    ? 'text-taxly-700'
-                    : 'text-stone-400'
+                    ? 'text-[#5A6A8A]'
+                    : 'text-[#C9C9C9]'
               }`}
             >
               {label}
@@ -125,7 +126,7 @@ export default function OnboardingPage() {
       {/* Content */}
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#FF5252]">{error}</div>
         )}
 
         {step === 0 && <StepEntityType data={data} onNext={next} />}
