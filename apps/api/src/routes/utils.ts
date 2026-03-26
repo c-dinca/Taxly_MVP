@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { verifyCUI } from '../services/anaf.js'
+import { verifyCUI } from '../services/anaf'
 
 interface CuiParams {
   Params: { cui: string }

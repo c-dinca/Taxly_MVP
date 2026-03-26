@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { User } from '../models/user.js'
-import { hashPassword, verifyPassword } from '../utils/crypto.js'
+import { User } from '../models/user'
+import { hashPassword, verifyPassword } from '../utils/crypto'
 import { RegisterSchema, LoginSchema } from '@taxly/schemas'
 
 const TRIAL_DAYS = 30

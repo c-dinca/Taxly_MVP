@@ -49,6 +49,5 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true },
 )
 
-UserSchema.index({ email: 1 })
 
 export const User: Model<IUser> = mongoose.model<IUser>('User', UserSchema)

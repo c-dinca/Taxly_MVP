@@ -6,10 +6,14 @@ export default auth((req: NextRequest & { auth: unknown }) => {
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
 
-  const publicPaths = ['/login', '/register', '/']
+  const publicPaths = ['/login', '/register']
   const isPublic = publicPaths.some(p => pathname.startsWith(p))
 
-  if (!isLoggedIn && !isPublic) {
+  if (!isLoggedIn && !isPublic && pathname !== '/') {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  if (!isLoggedIn && pathname === '/') {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
