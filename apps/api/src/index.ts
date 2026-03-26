@@ -8,10 +8,12 @@ import jwt from '@fastify/jwt'
 
 import { connectDB } from './plugins/database.js'
 import { connectRedis } from './plugins/redis.js'
+import { registerAuthDecorator } from './plugins/auth.js'
 import { authRoutes } from './routes/auth.js'
 import { invoiceRoutes } from './routes/invoices.js'
 import { clientRoutes } from './routes/clients.js'
 import { fiscalRoutes } from './routes/fiscal.js'
+import { utilRoutes } from './routes/utils.js'
 
 const app = Fastify({
   logger: {
@@ -37,12 +39,14 @@ await app.register(jwt, {
 // Database connections
 await connectDB()
 await connectRedis()
+registerAuthDecorator(app)
 
 // Routes
 await app.register(authRoutes, { prefix: '/api/auth' })
 await app.register(invoiceRoutes, { prefix: '/api/invoices' })
 await app.register(clientRoutes, { prefix: '/api/clients' })
 await app.register(fiscalRoutes, { prefix: '/api/fiscal' })
+await app.register(utilRoutes, { prefix: '/api/utils' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))

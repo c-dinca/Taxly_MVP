@@ -19,6 +19,7 @@
     "@fastify/sensible": "^6.0.3",
     "@taxly/schemas": "workspace:*",
     "@taxly/types": "workspace:*",
+    "argon2": "^0.44.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.56.2",
     "dotenv": "^16.5.0",
