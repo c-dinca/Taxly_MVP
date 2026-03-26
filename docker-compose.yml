@@ -1,0 +1,51 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: taxly-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: taxly
+      MONGO_INITDB_ROOT_PASSWORD: taxly_dev_pass
+      MONGO_INITDB_DATABASE: taxly
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: taxly-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: taxly-mongo-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: taxly
+      ME_CONFIG_MONGODB_ADMINPASSWORD: taxly_dev_pass
+      ME_CONFIG_MONGODB_URL: mongodb://taxly:taxly_dev_pass@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+  redis_data:
