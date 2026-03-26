@@ -38,26 +38,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#faf7f4] px-4">
-      <div className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
+      <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-taxly-700">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M3 6h18M3 12h18M3 18h18" stroke="#FFDBBB" strokeWidth="2.2" strokeLinecap="round"/>
-              <circle cx="18" cy="18" r="3" fill="#FFDBBB"/>
+          <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-stone-900">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M3 12h18M3 18h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-taxly-900">Taxly</h1>
-          <p className="mt-1 text-sm text-taxly-500">Contabilitate simplă pentru PFA-uri</p>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Taxly</h1>
+          <p className="mt-1 text-sm text-stone-500">Contabilitate simplă pentru PFA-uri</p>
         </div>
 
-        <div className="rounded-2xl border border-taxly-300/40 bg-white p-8 shadow-sm">
-          <h2 className="mb-6 text-xl font-semibold text-taxly-900">Intră în cont</h2>
+        <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+          <h2 className="mb-6 text-xl font-semibold text-stone-900">Intră în cont</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-taxly-700">
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-stone-700">
                 Email
               </label>
               <input
@@ -66,13 +65,13 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full rounded-lg border border-taxly-300/60 bg-taxly-50 px-3 py-2.5 text-sm text-taxly-900 placeholder:text-taxly-400 focus:border-taxly-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-taxly-500/20"
+                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/20"
                 placeholder="ion@exemplu.ro"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-taxly-700">
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-stone-700">
                 Parolă
               </label>
               <input
@@ -81,27 +80,27 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="w-full rounded-lg border border-taxly-300/60 bg-taxly-50 px-3 py-2.5 text-sm text-taxly-900 placeholder:text-taxly-400 focus:border-taxly-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-taxly-500/20"
+                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-taxly-700 focus:outline-none focus:ring-2 focus:ring-taxly-700/20"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-taxly-700 py-2.5 text-sm font-semibold text-taxly-100 transition hover:bg-taxly-800 disabled:opacity-60"
+              className="w-full rounded-lg bg-taxly-700 py-2.5 text-sm font-semibold text-white transition hover:bg-taxly-800 disabled:opacity-60"
             >
               {loading ? 'Se încarcă...' : 'Intră în cont'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-taxly-500">
+          <p className="mt-6 text-center text-sm text-stone-500">
             Nu ai cont?{' '}
-            <Link href="/register" className="font-medium text-taxly-700 hover:text-taxly-800 underline underline-offset-2">
+            <Link href="/register" className="font-medium text-taxly-700 underline-offset-2 hover:text-taxly-800 hover:underline">
               Creează cont gratuit
             </Link>
           </p>

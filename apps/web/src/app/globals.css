@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf7f4;
-  --foreground: #2c1f12;
+  --background: #ffffff;
+  --foreground: #1c1917;
 }
 
 @theme inline {
@@ -11,8 +11,8 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Taxly Brand Colors — Neutral Elegance */
-  --color-taxly-50:  #fff8f2;
+  /* Taxly accent — earthy brown, used sparingly */
+  --color-taxly-50:  #fdf8f4;
   --color-taxly-100: #FFDBBB;
   --color-taxly-200: #f0c9a0;
   --color-taxly-300: #CCBEB1;
@@ -22,11 +22,11 @@
   --color-taxly-700: #664930;
   --color-taxly-800: #503a25;
   --color-taxly-900: #3a2a1a;
-  --color-taxly-950: #251a0f;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }

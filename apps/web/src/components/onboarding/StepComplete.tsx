@@ -21,7 +21,7 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
   return (
     <div>
       <div className="mb-6 flex items-center justify-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-taxly-100 border border-taxly-300/40">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-taxly-50 border border-stone-200">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 12l2 2 4-4" stroke="#664930"/>
             <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2z" stroke="#664930"/>
@@ -29,14 +29,14 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
         </div>
       </div>
 
-      <h2 className="mb-2 text-center text-2xl font-bold text-taxly-900">
+      <h2 className="mb-2 text-center text-2xl font-bold tracking-tight text-stone-900">
         Totul arată bine!
       </h2>
-      <p className="mb-8 text-center text-taxly-500">
+      <p className="mb-8 text-center text-stone-500">
         Verifică datele înainte de a finaliza configurarea contului.
       </p>
 
-      <div className="mb-8 divide-y divide-taxly-300/20 rounded-xl border border-taxly-300/40 bg-white">
+      <div className="mb-8 divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
         {data.name && <Row label="Denumire" value={data.name} />}
         <Row label="Tip entitate" value={LABELS[data.entityType ?? ''] ?? data.entityType ?? '—'} />
         <Row label="Regim fiscal" value={LABELS[data.fiscalRegime ?? ''] ?? data.fiscalRegime ?? '—'} />
@@ -50,7 +50,7 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
       <button
         onClick={() => onFinish({})}
         disabled={saving}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-3 text-sm font-semibold text-taxly-100 hover:bg-taxly-800 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-taxly-700 py-3 text-sm font-semibold text-white hover:bg-taxly-800 disabled:opacity-60"
       >
         {saving ? (
           <>
@@ -71,7 +71,7 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
 
       <button
         onClick={onBack}
-        className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm font-medium text-taxly-500 hover:text-taxly-700"
+        className="mt-4 flex w-full items-center justify-center gap-1.5 text-sm text-stone-400 hover:text-stone-600"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor"/>
@@ -85,8 +85,8 @@ export default function StepComplete({ data, onFinish, onBack, saving }: Props) 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between px-4 py-3">
-      <span className="text-sm text-taxly-500">{label}</span>
-      <span className="text-sm font-medium text-taxly-900">{value}</span>
+      <span className="text-sm text-stone-500">{label}</span>
+      <span className="text-sm font-medium text-stone-900">{value}</span>
     </div>
   )
 }
