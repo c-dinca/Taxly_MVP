@@ -7,6 +7,7 @@ import { apiRequest } from '@/lib/api'
 import { useAuthToken } from '@/hooks/useAuthToken'
 import { PaymentModal } from './PaymentModal'
 import { InvoicePreview, type Acompte } from './InvoicePreview'
+import { StornoModal } from './StornoModal'
 import type { LineData } from './InvoiceLineRow'
 
 interface InvoiceListProps {}
@@ -50,6 +51,7 @@ export function InvoiceList({}: InvoiceListProps) {
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null)
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [stornoInvoice, setStornoInvoice] = useState<Invoice | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -70,6 +72,16 @@ export function InvoiceList({}: InvoiceListProps) {
   function handlePaid(updated: Invoice) {
     setInvoices(prev => prev.map(inv => inv._id === updated._id ? updated : inv))
     setPaymentInvoice(null)
+  }
+
+  function handleStornoCreated(storno: Invoice) {
+    setInvoices(prev => {
+      // Adaugă nota de credit în listă și actualizează factura originală dacă a fost anulată
+      const updated = prev.map(inv =>
+        inv._id === storno.originalInvoiceId ? { ...inv, status: 'anulata' as const } : inv,
+      )
+      return [storno, ...updated]
+    })
   }
 
   async function handleCancel(inv: Invoice) {
@@ -101,6 +113,14 @@ export function InvoiceList({}: InvoiceListProps) {
           invoice={paymentInvoice}
           onClose={() => setPaymentInvoice(null)}
           onPaid={handlePaid}
+        />
+      )}
+
+      {stornoInvoice && (
+        <StornoModal
+          invoice={stornoInvoice}
+          onClose={() => setStornoInvoice(null)}
+          onCreated={handleStornoCreated}
         />
       )}
 
@@ -161,6 +181,7 @@ export function InvoiceList({}: InvoiceListProps) {
                 }))}
                 mentiuni={previewInvoice.notes ?? ''}
                 userName=""
+                originalInvoiceNumber={previewInvoice.originalInvoiceNumber}
               />
             </div>
           </div>
@@ -252,7 +273,7 @@ export function InvoiceList({}: InvoiceListProps) {
                         {inv.totals.total.toFixed(2)} {inv.totals.currency}
                         {inv.acomptes.length > 0 && (
                           <span className="block text-[11px] text-emerald-600">
-                            rest: {(
+                            rest de achitat: {(
                               inv.totals.total -
                               inv.acomptes.reduce((s, a) => s + a.amount, 0)
                             ).toFixed(2)}
@@ -292,9 +313,9 @@ export function InvoiceList({}: InvoiceListProps) {
                               <>
                                 <button
                                   className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
-                                  onClick={() => { setOpenDropdown(null); alert('Coming soon — Avoir') }}
+                                  onClick={() => { setOpenDropdown(null); setStornoInvoice(inv) }}
                                 >
-                                  <span>↩</span> Creează avoir
+                                  <span>↩</span> Emite notă de credit
                                 </button>
                                 <button
                                   className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"

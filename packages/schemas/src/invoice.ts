@@ -29,6 +29,8 @@ export const CreateInvoiceSchema = z.object({
   internalNote: z.string().max(1000).optional(),
   remiseGenerala: z.number().min(0).max(100).default(0),
   acomptes: z.array(AcompteSchema).default([]),
+  originalInvoiceId: z.string().optional(),
+  stornoType: z.enum(['total', 'partial']).optional(),
 })
 
 export const PaymentSchema = z.object({

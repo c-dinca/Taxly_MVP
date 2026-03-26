@@ -60,6 +60,7 @@ export interface Invoice {
   lines: InvoiceLine[]
   remiseGenerala: number
   acomptes: InvoiceAcompte[]
+  acomptesTotal?: number
   totals: InvoiceTotals
   notes?: string
   internalNote?: string
@@ -67,6 +68,9 @@ export interface Invoice {
   eFactura?: EFacturaStatus
   pdfUrl?: string
   xmlContent?: string
+  originalInvoiceId?: string
+  originalInvoiceNumber?: string
+  stornoType?: 'total' | 'partial'
   createdAt: string
   updatedAt: string
 }
@@ -94,4 +98,6 @@ export interface CreateInvoiceDto {
   internalNote?: string
   remiseGenerala: number
   acomptes: { description: string; date: string; amount: number }[]
+  originalInvoiceId?: string
+  stornoType?: 'total' | 'partial'
 }

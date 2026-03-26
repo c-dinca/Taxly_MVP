@@ -130,7 +130,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
       const number = await getNextInvoiceNumber(sub, year)
       const fullNumber = `TAXLY-${year}-${String(number).padStart(4, '0')}`
 
-      const built = await buildInvoiceFields(data, client, sub)
+      const built = await buildInvoiceFields(data, client)
 
       const invoice = await Invoice.create({
         userId: sub,
@@ -151,8 +151,11 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         totalRON: built.totalRON,
         remiseGenerala: data.remiseGenerala,
         acomptes: data.acomptes.map(a => ({ ...a, date: new Date(a.date) })),
+        acomptesTotal: parseFloat(data.acomptes.reduce((s, a) => s + a.amount, 0).toFixed(2)),
         notes: data.notes,
         internalNote: data.internalNote,
+        originalInvoiceId: data.originalInvoiceId,
+        stornoType: data.stornoType,
       })
 
       return reply.code(201).send({ invoice })
@@ -218,7 +221,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
       if (client.userId.toString() !== sub) return reply.forbidden('Acces interzis')
       if (!client.isActive) return reply.code(400).send({ error: 'Clientul este inactiv' })
 
-      const built = await buildInvoiceFields(data, client, sub)
+      const built = await buildInvoiceFields(data, client)
 
       const updated = await Invoice.findByIdAndUpdate(
         id,
@@ -237,6 +240,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
           totalRON: built.totalRON,
           remiseGenerala: data.remiseGenerala,
           acomptes: data.acomptes.map(a => ({ ...a, date: new Date(a.date) })),
+          acomptesTotal: parseFloat(data.acomptes.reduce((s, a) => s + a.amount, 0).toFixed(2)),
           notes: data.notes,
           internalNote: data.internalNote,
         },
@@ -308,6 +312,112 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
       const updated = await Invoice.findByIdAndUpdate(id, { status: 'anulata' }, { new: true })
       return reply.send({ invoice: updated })
+    },
+  )
+
+  // POST /api/invoices/:id/storno — creează o notă de credit bazată pe factura originală
+  const StornoBodySchema = z.object({
+    stornoType: z.enum(['total', 'partial']),
+    lines: z.array(z.object({
+      description: z.string(),
+      quantity: z.number(),
+      unitPrice: z.number(),
+      vatRate: z.number(),
+      unit: z.string().default('buc'),
+    })).optional(),
+    reason: z.string().optional(),
+  })
+
+  app.post<IdParams>(
+    '/:id/storno',
+    { preHandler: [app.authenticate] },
+    async (request: FastifyRequest<IdParams>, reply: FastifyReply) => {
+      const { sub } = request.user as JwtUser
+      const { id } = request.params
+
+      if (!mongoose.isValidObjectId(id)) {
+        return reply.code(400).send({ error: 'ID invalid' })
+      }
+
+      const original = await Invoice.findById(id)
+      if (!original) return reply.notFound('Factura nu a fost găsită')
+      if (original.userId.toString() !== sub) return reply.forbidden('Acces interzis')
+      if (original.status === 'anulata') {
+        return reply.code(400).send({ error: 'Factura este deja anulată și nu poate fi stornată' })
+      }
+      if (original.type === 'storno') {
+        return reply.code(400).send({ error: 'O factură storno nu poate fi stornată din nou' })
+      }
+
+      const bodyResult = StornoBodySchema.safeParse(request.body)
+      if (!bodyResult.success) {
+        return reply.badRequest(bodyResult.error.issues[0]?.message ?? 'Date invalide')
+      }
+      const { stornoType, lines: partialLines, reason } = bodyResult.data
+
+      // Build storno lines (negative quantities for total, or provided lines for partial)
+      const stornoLines = stornoType === 'total'
+        ? original.lines.map(l => ({
+            description: l.description,
+            quantity: l.quantity,
+            unitPrice: parseFloat((-Math.abs(l.unitPrice)).toFixed(2)),
+            vatRate: l.vatRate,
+            unit: l.unit,
+            total: parseFloat((-Math.abs(l.total)).toFixed(2)),
+            vatAmount: parseFloat((-Math.abs(l.vatAmount)).toFixed(2)),
+          }))
+        : (partialLines ?? []).map(l => {
+            const total = parseFloat((l.quantity * l.unitPrice).toFixed(2))
+            const vatAmount = parseFloat((total * l.vatRate / 100).toFixed(2))
+            return { ...l, total, vatAmount }
+          })
+
+      const factor = 1 - original.remiseGenerala / 100
+      const subtotal = parseFloat((stornoLines.reduce((acc, l) => acc + l.total, 0) * factor).toFixed(2))
+      const vatTotal = parseFloat(stornoLines.reduce((acc, l) => acc + (l.total * factor * l.vatRate / 100), 0).toFixed(2))
+      const total = parseFloat((subtotal + vatTotal).toFixed(2))
+
+      let exchangeRate: number | undefined = original.exchangeRate
+      let totalRON = total
+      if (original.currency !== 'RON' && exchangeRate) {
+        totalRON = parseFloat((total * exchangeRate).toFixed(2))
+      }
+
+      const year = new Date().getFullYear()
+      const number = await getNextInvoiceNumber(sub, year)
+      const fullNumber = `TAXLY-${year}-${String(number).padStart(4, '0')}`
+
+      const stornoInvoice = await Invoice.create({
+        userId: sub,
+        number,
+        series: 'TAXLY',
+        fullNumber,
+        type: 'storno',
+        status: 'emisa',
+        issueDate: new Date(),
+        client: original.client,
+        lines: stornoLines,
+        remiseGenerala: original.remiseGenerala,
+        acomptes: [],
+        acomptesTotal: 0,
+        subtotal,
+        vatTotal,
+        total,
+        currency: original.currency,
+        exchangeRate,
+        totalRON,
+        notes: reason ?? `Notă de credit pentru factura ${original.fullNumber}`,
+        originalInvoiceId: original._id,
+        originalInvoiceNumber: original.fullNumber,
+        stornoType,
+      })
+
+      // Dacă storno total, anulează factura originală
+      if (stornoType === 'total') {
+        await Invoice.findByIdAndUpdate(id, { status: 'anulata' })
+      }
+
+      return reply.code(201).send({ invoice: stornoInvoice })
     },
   )
 }

@@ -45,6 +45,7 @@ export interface IInvoice extends Document {
   lines: IInvoiceLine[]
   remiseGenerala: number
   acomptes: IInvoiceAcompte[]
+  acomptesTotal: number
   subtotal: number
   vatTotal: number
   total: number
@@ -53,6 +54,9 @@ export interface IInvoice extends Document {
   totalRON: number
   notes?: string
   internalNote?: string
+  originalInvoiceId?: mongoose.Types.ObjectId
+  originalInvoiceNumber?: string
+  stornoType?: 'total' | 'partial'
   payment?: IInvoicePayment
   pdfPath?: string
   createdAt: Date
@@ -129,6 +133,7 @@ const InvoiceSchema = new Schema<IInvoice>(
     lines: [InvoiceLineSchema],
     remiseGenerala: { type: Number, default: 0 },
     acomptes: { type: [AcompteSchema], default: [] },
+    acomptesTotal: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
     vatTotal: { type: Number, required: true },
     total: { type: Number, required: true },
@@ -137,6 +142,9 @@ const InvoiceSchema = new Schema<IInvoice>(
     totalRON: { type: Number, required: true },
     notes: String,
     internalNote: String,
+    originalInvoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
+    originalInvoiceNumber: String,
+    stornoType: { type: String, enum: ['total', 'partial'] },
     payment: PaymentSchema,
     pdfPath: String,
   },

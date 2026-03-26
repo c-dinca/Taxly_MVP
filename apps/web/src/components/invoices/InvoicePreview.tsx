@@ -21,6 +21,7 @@ interface InvoicePreviewProps {
   acomptes: Acompte[]
   mentiuni: string
   userName: string
+  originalInvoiceNumber?: string
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -28,7 +29,7 @@ const TYPE_LABELS: Record<string, string> = {
   proforma: 'FACTURĂ PROFORMĂ',
   deviz: 'DEVIZ',
   avans: 'FACTURĂ DE AVANS',
-  storno: 'FACTURĂ STORNO',
+  storno: 'FACTURĂ STORNO / NOTĂ DE CREDIT',
 }
 
 function fmt(n: number) { return n.toFixed(2) }
@@ -40,7 +41,7 @@ function fmtDate(d: string) {
 
 export function InvoicePreview({
   type, issueDate, dueDate, currency, client, lines,
-  remiseGenerala, acomptes, mentiuni, userName,
+  remiseGenerala, acomptes, mentiuni, userName, originalInvoiceNumber,
 }: InvoicePreviewProps) {
   const calcs = lines.map(lineCalc)
 
@@ -63,6 +64,7 @@ export function InvoicePreview({
   const restaPlata = totalTTC - totalAcomptes
 
   const hasRemise = totalRemiseLinii > 0 || remiseGenerala > 0
+  const isStorno = type === 'storno'
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed">
@@ -70,7 +72,7 @@ export function InvoicePreview({
       <div className="bg-taxly-700 px-6 py-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-taxly-200 text-[9px] uppercase tracking-[0.15em] mb-1">Document fiscal</p>
+            <p className="text-taxly-200 text-[9px] uppercase tracking-[0.15em] mb-1">Document fiscal român</p>
             <h2 className="text-white text-sm font-bold tracking-wide">{TYPE_LABELS[type] ?? 'FACTURĂ'}</h2>
           </div>
           <div className="text-right">
@@ -81,6 +83,14 @@ export function InvoicePreview({
       </div>
 
       <div className="px-6 py-5 space-y-5">
+        {/* Referință storno */}
+        {originalInvoiceNumber && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
+            <span className="font-semibold">Notă de credit</span> pentru factura{' '}
+            <span className="font-mono font-bold">{originalInvoiceNumber}</span>
+          </div>
+        )}
+
         {/* Meta row */}
         <div className="flex flex-wrap gap-x-6 gap-y-2 pb-4 border-b border-[#F4F6FB]">
           <div>
@@ -128,7 +138,7 @@ export function InvoicePreview({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-[#E2EAF4]">
-                  {['Denumire', 'Cant.', 'UM', 'Preț HT', 'Rem.', 'TVA', 'Net HT'].map(h => (
+                  {['Denumire', 'Cant.', 'UM', 'Preț fără TVA', 'Rem.', 'TVA', 'Bază impozabilă'].map(h => (
                     <th key={h} className={`pb-2 text-[10px] font-semibold text-[#8FA3C0] ${h === 'Denumire' ? 'text-left' : 'text-right'}`}>{h}</th>
                   ))}
                 </tr>
@@ -136,25 +146,28 @@ export function InvoicePreview({
               <tbody>
                 {lines.map((line, i) => {
                   const c = calcs[i]
+                  const isNegative = line.unitPrice < 0 || c.netHT < 0
                   return (
                     <tr key={i} className="border-b border-[#F4F6FB] last:border-0">
                       <td className="py-2 pr-3">
                         {line.reference && (
                           <p className="text-[10px] text-[#8FA3C0] font-mono mb-0.5">{line.reference}</p>
                         )}
-                        <p className="font-medium text-[#0D1B3E]">{line.title || <span className="text-[#8FA3C0] italic">—</span>}</p>
+                        <p className={`font-medium ${isStorno || isNegative ? 'text-red-700' : 'text-[#0D1B3E]'}`}>
+                          {line.title || <span className="text-[#8FA3C0] italic">—</span>}
+                        </p>
                         {line.description && (
                           <p className="text-[10px] text-[#8FA3C0] mt-0.5 leading-tight">{line.description}</p>
                         )}
                       </td>
-                      <td className="py-2 text-right text-[#5A6A8A]">{line.quantity}</td>
+                      <td className={`py-2 text-right ${isNegative ? 'text-red-500' : 'text-[#5A6A8A]'}`}>{line.quantity}</td>
                       <td className="py-2 text-right text-[#5A6A8A]">{line.unit}</td>
-                      <td className="py-2 text-right text-[#5A6A8A]">{fmt(line.unitPrice)}</td>
+                      <td className={`py-2 text-right ${isNegative ? 'text-red-500' : 'text-[#5A6A8A]'}`}>{fmt(line.unitPrice)}</td>
                       <td className="py-2 text-right text-[#5A6A8A]">
                         {line.remise > 0 ? <span className="text-red-500">{line.remise}%</span> : '—'}
                       </td>
                       <td className="py-2 text-right text-[#5A6A8A]">{line.vatRate}%</td>
-                      <td className="py-2 text-right font-semibold text-[#0D1B3E]">{fmt(c.netHT)}</td>
+                      <td className={`py-2 text-right font-semibold ${isNegative ? 'text-red-600' : 'text-[#0D1B3E]'}`}>{fmt(c.netHT)}</td>
                     </tr>
                   )
                 })}
@@ -165,12 +178,12 @@ export function InvoicePreview({
 
         {/* Totals */}
         <div className="border-t-2 border-[#E2EAF4] pt-4 space-y-1.5">
-          <Row label="Total HT brut" value={`${fmt(totalHTBrut)} ${currency}`} />
+          <Row label="Total bază impozabilă brută" value={`${fmt(totalHTBrut)} ${currency}`} />
 
           {hasRemise && (
             <>
               {totalRemiseLinii > 0 && (
-                <Row label="Remisă linii" value={`−${fmt(totalRemiseLinii)} ${currency}`} accent="red" />
+                <Row label="Remisă pe linii" value={`−${fmt(totalRemiseLinii)} ${currency}`} accent="red" />
               )}
               {remiseGenerala > 0 && (
                 <Row label={`Remisă generală (${remiseGenerala}%)`} value={`−${fmt(remiseGeneralaAmount)} ${currency}`} accent="red" />
@@ -178,10 +191,10 @@ export function InvoicePreview({
             </>
           )}
 
-          <Row label="Total HT net" value={`${fmt(totalHTNet)} ${currency}`} semi />
+          <Row label="Total bază impozabilă netă" value={`${fmt(totalHTNet)} ${currency}`} semi />
 
           {Object.entries(tvaByRate)
-            .filter(([, v]) => v > 0.001)
+            .filter(([, v]) => Math.abs(v) > 0.001)
             .sort(([a], [b]) => Number(b) - Number(a))
             .map(([rate, amount]) => (
               <Row key={rate} label={`TVA ${rate}%`} value={`${fmt(amount)} ${currency}`} />
@@ -193,21 +206,22 @@ export function InvoicePreview({
 
           <div className="pt-2 border-t-2 border-[#0D1B3E]">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm font-bold">Total TTC</span>
-              <span className="text-base font-bold">{fmt(totalTTC)} {currency}</span>
+              <span className={`text-sm font-bold ${isStorno ? 'text-red-700' : ''}`}>Total de plată (cu TVA)</span>
+              <span className={`text-base font-bold ${isStorno ? 'text-red-700' : ''}`}>{fmt(totalTTC)} {currency}</span>
             </div>
           </div>
 
           {acomptes.length > 0 && (
             <>
               <div className="pt-1 border-t border-[#E2EAF4]">
+                <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-1.5">Din care aconturi</p>
                 {acomptes.map(a => (
-                  <Row key={a.id} label={`Deja plătit — ${a.description || 'Acont'}`} value={`−${fmt(a.amount)} ${currency}`} accent="emerald" />
+                  <Row key={a.id} label={`Acont — ${a.description || 'Avans primit'}`} value={`−${fmt(a.amount)} ${currency}`} accent="emerald" />
                 ))}
               </div>
               <div className="pt-2 border-t border-taxly-200">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-taxly-700">Rest de plată</span>
+                  <span className="text-sm font-bold text-taxly-700">Rest de achitat</span>
                   <span className="text-base font-bold text-taxly-700">{fmt(restaPlata)} {currency}</span>
                 </div>
               </div>
@@ -241,3 +255,4 @@ function Row({ label, value, semi, accent }: { label: string; value: string; sem
     </div>
   )
 }
+
