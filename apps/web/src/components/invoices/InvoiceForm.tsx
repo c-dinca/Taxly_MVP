@@ -572,6 +572,7 @@ export function InvoiceForm({ userName, mode = 'create', initialData }: InvoiceF
           </p>
           <InvoicePreview
             type={type}
+            invoiceNumber={initialData?.fullNumber}
             issueDate={issueDate}
             dueDate={dueDate}
             currency={currency}
@@ -581,6 +582,7 @@ export function InvoiceForm({ userName, mode = 'create', initialData }: InvoiceF
             acomptes={acomptes}
             mentiuni={mentiuni}
             userName={userName ?? ''}
+            supplier={{ name: userName ?? undefined }}
           />
         </div>
       </div>

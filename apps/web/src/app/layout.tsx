@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
@@ -10,6 +10,20 @@ export const metadata: Metadata = {
   description:
     'Facturare, contabilitate și conformitate fiscală pentru PFA-uri, II-uri și micro-SRL-uri din România.',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Taxly',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#004AAD',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

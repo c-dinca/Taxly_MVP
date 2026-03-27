@@ -10,6 +10,15 @@ export interface Acompte {
   amount: number
 }
 
+export interface SupplierInfo {
+  name?: string
+  address?: string
+  cui?: string
+  regCom?: string
+  iban?: string
+  bank?: string
+}
+
 interface InvoicePreviewProps {
   type: string
   issueDate: string
@@ -21,20 +30,33 @@ interface InvoicePreviewProps {
   acomptes: Acompte[]
   mentiuni: string
   userName: string
+  supplier?: SupplierInfo
+  invoiceNumber?: string
   originalInvoiceNumber?: string
   /** Removes outer card wrapper — use when InvoicePreview is already inside a modal/card */
   flat?: boolean
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  factura: 'FACTURĂ FISCALĂ',
-  proforma: 'FACTURĂ PROFORMĂ',
-  deviz: 'DEVIZ',
-  avans: 'FACTURĂ DE AVANS',
-  storno: 'FACTURĂ STORNO / NOTĂ DE CREDIT',
+const TYPE_LABELS: Record<string, { title: string; subtitle: string }> = {
+  factura:  { title: 'FACTURĂ FISCALĂ',            subtitle: 'conf. art. 319 din Legea nr. 227/2015' },
+  proforma: { title: 'FACTURĂ PROFORMĂ',           subtitle: 'Document fără valoare fiscală' },
+  deviz:    { title: 'DEVIZ / OFERTĂ',             subtitle: 'Document estimativ de costuri' },
+  avans:    { title: 'FACTURĂ DE AVANS',           subtitle: 'conf. art. 319 din Legea nr. 227/2015' },
+  storno:   { title: 'FACTURĂ STORNO',             subtitle: 'Notă de credit / Corecție fiscală' },
 }
 
-function fmt(n: number) { return n.toFixed(2) }
+const HEADER_COLOR: Record<string, string> = {
+  factura:  'bg-taxly-700',
+  proforma: 'bg-slate-600',
+  deviz:    'bg-indigo-700',
+  avans:    'bg-teal-700',
+  storno:   'bg-red-700',
+}
+
+function fmt(n: number, decimals = 2) {
+  return n.toLocaleString('ro-RO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+}
+
 function fmtDate(d: string) {
   if (!d) return '—'
   const [y, m, day] = d.split('-')
@@ -43,133 +65,160 @@ function fmtDate(d: string) {
 
 export function InvoicePreview({
   type, issueDate, dueDate, currency, client, lines,
-  remiseGenerala, acomptes, mentiuni, userName, originalInvoiceNumber, flat,
+  remiseGenerala, acomptes, mentiuni, userName, supplier,
+  invoiceNumber, originalInvoiceNumber, flat,
 }: InvoicePreviewProps) {
   const calcs = lines.map(lineCalc)
 
-  const totalHTBrut = calcs.reduce((s, c) => s + c.baseHT, 0)
+  const totalHTBrut     = calcs.reduce((s, c) => s + c.baseHT, 0)
   const totalRemiseLinii = calcs.reduce((s, c) => s + c.remiseAmount, 0)
-  const totalHTNetLinii = calcs.reduce((s, c) => s + c.netHT, 0)
+  const totalHTNetLinii  = calcs.reduce((s, c) => s + c.netHT, 0)
   const remiseGeneralaAmount = totalHTNetLinii * (remiseGenerala / 100)
   const totalHTNet = totalHTNetLinii - remiseGeneralaAmount
-  const factor = 1 - remiseGenerala / 100
+  const factor     = 1 - remiseGenerala / 100
 
-  // TVA breakdown by rate (with global remise applied)
-  const tvaByRate: Record<number, number> = {}
+  // TVA breakdown by rate
+  const tvaByRate: Record<number, { base: number; tva: number }> = {}
   lines.forEach((line, i) => {
-    const adjustedNet = calcs[i].netHT * factor
-    tvaByRate[line.vatRate] = (tvaByRate[line.vatRate] ?? 0) + adjustedNet * (line.vatRate / 100)
+    const base = calcs[i].netHT * factor
+    const tva  = base * (line.vatRate / 100)
+    if (!tvaByRate[line.vatRate]) tvaByRate[line.vatRate] = { base: 0, tva: 0 }
+    tvaByRate[line.vatRate].base += base
+    tvaByRate[line.vatRate].tva  += tva
   })
-  const totalTVA = Object.values(tvaByRate).reduce((s, v) => s + v, 0)
-  const totalTTC = totalHTNet + totalTVA
+  const totalTVA  = Object.values(tvaByRate).reduce((s, v) => s + v.tva, 0)
+  const totalTTC  = totalHTNet + totalTVA
   const totalAcomptes = acomptes.reduce((s, a) => s + a.amount, 0)
-  const restaPlata = totalTTC - totalAcomptes
+  const restaPlata    = totalTTC - totalAcomptes
 
   const hasRemise = totalRemiseLinii > 0 || remiseGenerala > 0
-  const isStorno = type === 'storno'
+  const isStorno  = type === 'storno'
+
+  const typeInfo   = TYPE_LABELS[type] ?? TYPE_LABELS['factura']
+  const headerBg   = HEADER_COLOR[type] ?? HEADER_COLOR['factura']
+  const supplierName = supplier?.name || userName || '—'
+
+  const wrapper = flat
+    ? 'text-[#0D1B3E] text-[12px] leading-[1.6] font-sans select-text'
+    : 'bg-white rounded-xl shadow-lg overflow-hidden text-[#0D1B3E] text-[12px] leading-[1.6] font-sans select-text'
 
   return (
-    <div className={flat ? 'overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed' : 'bg-white rounded-xl shadow-lg overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed'}>
-      {/* Header stripe */}
-      <div className="bg-taxly-700 px-6 py-5">
-        <div className="flex items-start justify-between">
+    <div className={wrapper}>
+
+      {/* ── Document header ── */}
+      <div className={`${headerBg} px-6 py-4`}>
+        <div className="flex items-start justify-between gap-4">
+          {/* Left: type */}
           <div>
-            <p className="text-taxly-200 text-[9px] uppercase tracking-[0.15em] mb-1">Document fiscal român</p>
-            <h2 className="text-white text-sm font-bold tracking-wide">{TYPE_LABELS[type] ?? 'FACTURĂ'}</h2>
+            <p className="text-white/60 text-[9px] uppercase tracking-[0.2em] mb-1">
+              {typeInfo.subtitle}
+            </p>
+            <h1 className="text-white text-[15px] font-extrabold tracking-wide leading-tight">
+              {typeInfo.title}
+            </h1>
           </div>
-          <div className="text-right">
-            <p className="text-white text-xl font-bold opacity-40">—</p>
-            <p className="text-taxly-200 text-[10px] mt-0.5">Număr serie</p>
+          {/* Right: number + dates */}
+          <div className="text-right flex-shrink-0">
+            <p className="text-white font-mono font-bold text-[15px] tracking-wider">
+              {invoiceNumber ?? '—'}
+            </p>
+            <p className="text-white/70 text-[10px] mt-0.5">
+              {fmtDate(issueDate)}{dueDate ? ` · scad. ${fmtDate(dueDate)}` : ''} · {currency}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="px-6 py-5 space-y-5">
-        {/* Referință storno */}
-        {originalInvoiceNumber && (
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
-            <span className="font-semibold">Notă de credit</span> pentru factura{' '}
+      {/* ── Storno reference banner ── */}
+      {originalInvoiceNumber && (
+        <div className="bg-red-50 border-b border-red-200 px-6 py-2.5 flex items-center gap-2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" className="text-red-500 flex-shrink-0"><path d="M9 14l-4-4 4-4M5 10h11a4 4 0 010 8h-1" stroke="currentColor"/></svg>
+          <p className="text-[11px] text-red-700">
+            <span className="font-semibold">Notă de credit</span>{' '}
+            emisă pentru factura{' '}
             <span className="font-mono font-bold">{originalInvoiceNumber}</span>
-          </div>
-        )}
-
-        {/* Meta row */}
-        <div className="flex flex-wrap gap-x-6 gap-y-2 pb-4 border-b border-[#F4F6FB]">
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold">Data emiterii</p>
-            <p className="font-medium">{fmtDate(issueDate)}</p>
-          </div>
-          {dueDate && (
-            <div>
-              <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold">Scadență</p>
-              <p className="font-medium">{fmtDate(dueDate)}</p>
-            </div>
-          )}
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold">Valută</p>
-            <p className="font-medium">{currency}</p>
-          </div>
+          </p>
         </div>
+      )}
 
-        {/* Parties */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-2">Furnizor</p>
-            <p className="font-semibold text-[#0D1B3E]">{userName || '—'}</p>
-            <p className="text-[#8FA3C0] text-xs italic mt-0.5">Adresă · CUI · IBAN</p>
+      <div className="px-6 py-5 space-y-5">
+
+        {/* ── Furnizor / Beneficiar ── */}
+        <div className="grid grid-cols-2 divide-x divide-[#E2EAF4] border border-[#E2EAF4] rounded-lg overflow-hidden">
+          {/* Furnizor */}
+          <div className="px-4 py-3.5">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-taxly-600 mb-2">Furnizor</p>
+            <p className="font-bold text-[13px] text-[#0D1B3E] leading-tight mb-1.5">{supplierName}</p>
+            <InfoLine label="Adresă" value={supplier?.address} />
+            <InfoLine label="CUI"    value={supplier?.cui} />
+            <InfoLine label="Reg. Com." value={supplier?.regCom} />
+            <InfoLine label="IBAN"   value={supplier?.iban} mono />
+            <InfoLine label="Bancă"  value={supplier?.bank} />
           </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-2">Client</p>
+          {/* Client / Beneficiar */}
+          <div className="px-4 py-3.5">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8FA3C0] mb-2">Beneficiar / Client</p>
             {client ? (
               <>
-                <p className="font-semibold text-[#0D1B3E]">{client.name}</p>
-                {client.address && <p className="text-[#5A6A8A] text-xs mt-0.5">{client.address}</p>}
-                {client.cui && <p className="text-[#5A6A8A] text-xs">CUI: {client.cui}</p>}
-                {client.cnp && <p className="text-[#5A6A8A] text-xs">CNP: {client.cnp}</p>}
+                <p className="font-bold text-[13px] text-[#0D1B3E] leading-tight mb-1.5">{client.name}</p>
+                <InfoLine label="Adresă" value={client.address} />
+                <InfoLine label="CUI"    value={client.cui} />
+                <InfoLine label="CNP"    value={client.cnp} />
+                <InfoLine label="Email"  value={client.email} />
               </>
             ) : (
-              <p className="text-[#8FA3C0] italic">— Selectează un client —</p>
+              <p className="text-[#8FA3C0] italic text-[11px] mt-1">— Niciun client selectat —</p>
             )}
           </div>
         </div>
 
-        {/* Lines table */}
+        {/* ── Produse / Servicii ── */}
         {lines.length > 0 && lines.some(l => l.title) && (
           <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-2">Produse / Servicii</p>
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse text-[11px]">
               <thead>
-                <tr className="border-b-2 border-[#E2EAF4]">
-                  {['Denumire', 'Cant.', 'UM', 'Preț fără TVA', 'Rem.', 'TVA', 'Bază impozabilă'].map(h => (
-                    <th key={h} className={`pb-2 text-[10px] font-semibold text-[#8FA3C0] ${h === 'Denumire' ? 'text-left' : 'text-right'}`}>{h}</th>
-                  ))}
+                <tr className="bg-[#F4F6FB] border-y border-[#E2EAF4]">
+                  <th className="py-2 px-2 text-left font-semibold text-[#5A6A8A] w-7">#</th>
+                  <th className="py-2 px-2 text-left font-semibold text-[#5A6A8A]">Denumire produs / serviciu</th>
+                  <th className="py-2 px-2 text-center font-semibold text-[#5A6A8A] w-10">U.M.</th>
+                  <th className="py-2 px-2 text-right font-semibold text-[#5A6A8A] w-14">Cant.</th>
+                  <th className="py-2 px-2 text-right font-semibold text-[#5A6A8A] w-20">Preț unit. fără TVA</th>
+                  <th className="py-2 px-2 text-right font-semibold text-[#5A6A8A] w-12">Disc.</th>
+                  <th className="py-2 px-2 text-right font-semibold text-[#5A6A8A] w-14">Cotă TVA</th>
+                  <th className="py-2 px-2 text-right font-semibold text-[#5A6A8A] w-22">Val. fără TVA</th>
                 </tr>
               </thead>
               <tbody>
                 {lines.map((line, i) => {
                   const c = calcs[i]
-                  const isNegative = line.unitPrice < 0 || c.netHT < 0
+                  const isNeg = line.unitPrice < 0 || c.netHT < 0
+                  const rowColor = isNeg ? 'text-red-600' : 'text-[#0D1B3E]'
                   return (
-                    <tr key={i} className="border-b border-[#F4F6FB] last:border-0">
-                      <td className="py-2 pr-3">
+                    <tr key={i} className="border-b border-[#F4F6FB] last:border-0 hover:bg-[#FAFBFD]">
+                      <td className="py-2 px-2 text-[#8FA3C0] text-center">{i + 1}</td>
+                      <td className="py-2 px-2">
                         {line.reference && (
-                          <p className="text-[10px] text-[#8FA3C0] font-mono mb-0.5">{line.reference}</p>
+                          <p className="text-[9px] text-[#8FA3C0] font-mono mb-0.5 uppercase tracking-wide">{line.reference}</p>
                         )}
-                        <p className={`font-medium ${isStorno || isNegative ? 'text-red-700' : 'text-[#0D1B3E]'}`}>
+                        <p className={`font-medium ${isStorno || isNeg ? 'text-red-700' : 'text-[#0D1B3E]'}`}>
                           {line.title || <span className="text-[#8FA3C0] italic">—</span>}
                         </p>
                         {line.description && (
                           <p className="text-[10px] text-[#8FA3C0] mt-0.5 leading-tight">{line.description}</p>
                         )}
                       </td>
-                      <td className={`py-2 text-right ${isNegative ? 'text-red-500' : 'text-[#5A6A8A]'}`}>{line.quantity}</td>
-                      <td className="py-2 text-right text-[#5A6A8A]">{line.unit}</td>
-                      <td className={`py-2 text-right ${isNegative ? 'text-red-500' : 'text-[#5A6A8A]'}`}>{fmt(line.unitPrice)}</td>
-                      <td className="py-2 text-right text-[#5A6A8A]">
-                        {line.remise > 0 ? <span className="text-red-500">{line.remise}%</span> : '—'}
+                      <td className="py-2 px-2 text-center text-[#5A6A8A]">{line.unit || '—'}</td>
+                      <td className={`py-2 px-2 text-right font-mono ${rowColor}`}>{line.quantity}</td>
+                      <td className={`py-2 px-2 text-right font-mono ${rowColor}`}>{fmt(line.unitPrice)}</td>
+                      <td className="py-2 px-2 text-right">
+                        {line.remise > 0
+                          ? <span className="text-red-500 font-medium">{line.remise}%</span>
+                          : <span className="text-[#C8D5E8]">—</span>}
                       </td>
-                      <td className="py-2 text-right text-[#5A6A8A]">{line.vatRate}%</td>
-                      <td className={`py-2 text-right font-semibold ${isNegative ? 'text-red-600' : 'text-[#0D1B3E]'}`}>{fmt(c.netHT)}</td>
+                      <td className="py-2 px-2 text-right text-[#5A6A8A]">{line.vatRate}%</td>
+                      <td className={`py-2 px-2 text-right font-mono font-semibold ${isNeg ? 'text-red-600' : 'text-[#0D1B3E]'}`}>
+                        {fmt(c.netHT)}
+                      </td>
                     </tr>
                   )
                 })}
@@ -178,83 +227,173 @@ export function InvoicePreview({
           </div>
         )}
 
-        {/* Totals */}
-        <div className="border-t-2 border-[#E2EAF4] pt-4 space-y-1.5">
-          <Row label="Total bază impozabilă brută" value={`${fmt(totalHTBrut)} ${currency}`} />
+        {/* ── Totals ── */}
+        <div className="flex justify-end">
+          <div className="w-full max-w-xs space-y-1">
+            {/* Subtotal */}
+            <TotalRow label="Valoare totală fără TVA" value={`${fmt(totalHTBrut)} ${currency}`} />
 
-          {hasRemise && (
-            <>
-              {totalRemiseLinii > 0 && (
-                <Row label="Reduceri comerciale pe linii" value={`−${fmt(totalRemiseLinii)} ${currency}`} accent="red" />
-              )}
-              {remiseGenerala > 0 && (
-                <Row label={`Reducere comercială globală (${remiseGenerala}%)`} value={`−${fmt(remiseGeneralaAmount)} ${currency}`} accent="red" />
-              )}
-            </>
-          )}
+            {/* Discounts */}
+            {hasRemise && (
+              <>
+                {totalRemiseLinii > 0 && (
+                  <TotalRow
+                    label="Reduceri comerciale (pe linii)"
+                    value={`−${fmt(totalRemiseLinii)} ${currency}`}
+                    accent="red"
+                  />
+                )}
+                {remiseGenerala > 0 && (
+                  <TotalRow
+                    label={`Reducere comercială globală (${remiseGenerala}%)`}
+                    value={`−${fmt(remiseGeneralaAmount)} ${currency}`}
+                    accent="red"
+                  />
+                )}
+                <TotalRow
+                  label="Bază impozabilă netă"
+                  value={`${fmt(totalHTNet)} ${currency}`}
+                  semi
+                />
+              </>
+            )}
 
-          <Row label="Total bază impozabilă netă" value={`${fmt(totalHTNet)} ${currency}`} semi />
+            {/* TVA by rate */}
+            {Object.entries(tvaByRate)
+              .filter(([, v]) => Math.abs(v.tva) > 0.001)
+              .sort(([a], [b]) => Number(b) - Number(a))
+              .map(([rate, { base, tva }]) => (
+                <TotalRow
+                  key={rate}
+                  label={`TVA ${rate}% (bază ${fmt(base)} ${currency})`}
+                  value={`${fmt(tva)} ${currency}`}
+                />
+              ))}
 
-          {Object.entries(tvaByRate)
-            .filter(([, v]) => Math.abs(v) > 0.001)
-            .sort(([a], [b]) => Number(b) - Number(a))
-            .map(([rate, amount]) => (
-              <Row key={rate} label={`TVA ${rate}%`} value={`${fmt(amount)} ${currency}`} />
-            ))}
-
-          <div className="pt-1 border-t border-[#E2EAF4]">
-            <Row label="Total TVA" value={`${fmt(totalTVA)} ${currency}`} semi />
-          </div>
-
-          <div className="pt-2 border-t-2 border-[#0D1B3E]">
-            <div className="flex justify-between items-baseline">
-              <span className={`text-sm font-bold ${isStorno ? 'text-red-700' : ''}`}>Total de plată (cu TVA)</span>
-              <span className={`text-base font-bold ${isStorno ? 'text-red-700' : ''}`}>{fmt(totalTTC)} {currency}</span>
+            {/* Total TVA */}
+            <div className="border-t border-[#E2EAF4] pt-1">
+              <TotalRow label="Total TVA" value={`${fmt(totalTVA)} ${currency}`} semi />
             </div>
-          </div>
 
-          {acomptes.length > 0 && (
-            <>
-              <div className="pt-1 border-t border-[#E2EAF4]">
-                <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-1.5">Din care aconturi</p>
-                {acomptes.map(a => (
-                  <Row key={a.id} label={`Acont — ${a.description || 'Avans primit'}`} value={`−${fmt(a.amount)} ${currency}`} accent="emerald" />
-                ))}
+            {/* Grand total */}
+            <div className={`mt-1 border-t-2 ${isStorno ? 'border-red-400' : 'border-taxly-700'} pt-2`}>
+              <div className="flex justify-between items-baseline gap-4">
+                <span className={`text-[12px] font-bold ${isStorno ? 'text-red-700' : 'text-[#0D1B3E]'}`}>
+                  TOTAL DE PLATĂ (cu TVA)
+                </span>
+                <span className={`text-[15px] font-extrabold font-mono ${isStorno ? 'text-red-700' : 'text-[#0D1B3E]'}`}>
+                  {fmt(totalTTC)} {currency}
+                </span>
               </div>
-              <div className="pt-2 border-t border-taxly-200">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-bold text-taxly-700">Rest de achitat</span>
-                  <span className="text-base font-bold text-taxly-700">{fmt(restaPlata)} {currency}</span>
+            </div>
+
+            {/* Aconturi / advances */}
+            {acomptes.length > 0 && (
+              <>
+                <div className="border-t border-[#E2EAF4] pt-1 mt-1">
+                  <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-bold mb-1">Aconturi deduse</p>
+                  {acomptes.map(a => (
+                    <TotalRow
+                      key={a.id}
+                      label={a.description || 'Avans primit'}
+                      value={`−${fmt(a.amount)} ${currency}`}
+                      accent="emerald"
+                    />
+                  ))}
                 </div>
-              </div>
-            </>
-          )}
+                <div className="border-t-2 border-taxly-200 pt-2">
+                  <div className="flex justify-between items-baseline gap-4">
+                    <span className="text-[12px] font-bold text-taxly-700">REST DE ACHITAT</span>
+                    <span className="text-[15px] font-extrabold font-mono text-taxly-700">
+                      {fmt(restaPlata)} {currency}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Mentiuni */}
+        {/* ── Mențiuni ── */}
         {mentiuni && (
-          <div className="border-t border-[#F4F6FB] pt-4">
-            <p className="text-[9px] uppercase tracking-wider text-[#8FA3C0] font-semibold mb-1.5">Mențiuni</p>
-            <p className="text-xs text-[#5A6A8A] whitespace-pre-wrap leading-relaxed">{mentiuni}</p>
+          <div className="border-t border-[#E2EAF4] pt-4">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8FA3C0] mb-1.5">Mențiuni</p>
+            <p className="text-[11px] text-[#5A6A8A] whitespace-pre-wrap leading-relaxed">{mentiuni}</p>
           </div>
         )}
 
-        {/* Footer */}
-        <div className="border-t border-[#F4F6FB] pt-3 text-center">
-          <p className="text-[10px] text-[#8FA3C0]">Document generat cu Taxly · taxly.ro</p>
+        {/* ── Legal mentions ── */}
+        <div className="border-t border-[#E2EAF4] pt-3 bg-[#FAFBFD] rounded-lg px-4 py-3">
+          <p className="text-[10px] text-[#8FA3C0] leading-relaxed">
+            {type === 'factura' || type === 'avans'
+              ? 'Prezenta factură este documentul fiscal emis în conformitate cu art. 319 din Legea nr. 227/2015 privind Codul fiscal, cu modificările și completările ulterioare.'
+              : type === 'storno'
+              ? 'Prezenta notă de credit (factură storno) este emisă în conformitate cu art. 330 din Legea nr. 227/2015 privind Codul fiscal. Documentul reduce/anulează obligațiile fiscale ale facturii de referință.'
+              : type === 'proforma'
+              ? 'Factura proformă nu reprezintă un document fiscal și nu generează obligații de TVA. Este valabilă ca ofertă comercială până la emiterea facturii fiscale.'
+              : type === 'deviz'
+              ? 'Prezentul deviz este o estimare a costurilor și nu generează obligații fiscale. Prețurile sunt orientative și pot fi modificate la emiterea facturii fiscale.'
+              : null}
+          </p>
         </div>
+
+        {/* ── Signature area ── */}
+        <div className="border-t border-[#E2EAF4] pt-4 grid grid-cols-2 gap-8">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8FA3C0] mb-5">
+              Furnizor — semnătură și ștampilă
+            </p>
+            <div className="border-b border-dashed border-[#C8D5E8] h-10" />
+            <p className="text-[10px] text-[#8FA3C0] mt-1.5">{supplierName}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#8FA3C0] mb-5">
+              Beneficiar — confirmare primire
+            </p>
+            <div className="border-b border-dashed border-[#C8D5E8] h-10" />
+            <p className="text-[10px] text-[#8FA3C0] mt-1.5">{client?.name ?? '—'}</p>
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="border-t border-[#F4F6FB] pt-3 flex items-center justify-between">
+          <p className="text-[9px] text-[#C8D5E8] uppercase tracking-widest">Document generat cu Taxly</p>
+          <p className="text-[9px] text-[#C8D5E8]">taxly.ro</p>
+        </div>
+
       </div>
     </div>
   )
 }
 
-function Row({ label, value, semi, accent }: { label: string; value: string; semi?: boolean; accent?: 'red' | 'emerald' }) {
-  const valueColor = accent === 'red' ? 'text-red-500' : accent === 'emerald' ? 'text-emerald-600' : semi ? 'text-[#0D1B3E]' : 'text-[#5A6A8A]'
+function InfoLine({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  if (!value) return null
   return (
-    <div className="flex justify-between items-baseline">
-      <span className={`${semi ? 'font-medium text-[#0D1B3E]' : 'text-[#5A6A8A]'}`}>{label}</span>
-      <span className={`font-medium ${valueColor}`}>{value}</span>
-    </div>
+    <p className="text-[11px] text-[#5A6A8A] leading-snug">
+      <span className="text-[#8FA3C0]">{label}: </span>
+      <span className={mono ? 'font-mono' : 'font-medium'}>{value}</span>
+    </p>
   )
 }
 
+function TotalRow({
+  label, value, semi, accent,
+}: {
+  label: string
+  value: string
+  semi?: boolean
+  accent?: 'red' | 'emerald'
+}) {
+  const labelColor = semi ? 'text-[#0D1B3E] font-medium' : 'text-[#5A6A8A]'
+  const valueColor =
+    accent === 'red'     ? 'text-red-600' :
+    accent === 'emerald' ? 'text-emerald-600' :
+    semi                 ? 'text-[#0D1B3E] font-medium' :
+                           'text-[#5A6A8A]'
+  return (
+    <div className="flex justify-between items-baseline gap-4">
+      <span className={`text-[11px] ${labelColor} leading-tight`}>{label}</span>
+      <span className={`text-[11px] font-mono ${valueColor} flex-shrink-0`}>{value}</span>
+    </div>
+  )
+}

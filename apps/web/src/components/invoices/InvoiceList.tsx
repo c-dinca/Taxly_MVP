@@ -317,6 +317,7 @@ export function InvoiceList({}: InvoiceListProps) {
                 <InvoicePreview
                   flat
                   type={previewInvoice.type}
+                  invoiceNumber={previewInvoice.fullNumber ?? `${previewInvoice.series}${previewInvoice.number}`}
                   issueDate={previewInvoice.issueDate.split('T')[0]}
                   dueDate={previewInvoice.dueDate ? previewInvoice.dueDate.split('T')[0] : ''}
                   currency={previewInvoice.totals.currency}

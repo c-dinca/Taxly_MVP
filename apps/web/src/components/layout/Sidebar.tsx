@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 
 interface SidebarProps {
   email?: string | null
   name?: string | null
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 const NAV_ITEMS = [
@@ -45,8 +48,14 @@ const NAV_ITEMS = [
   },
 ]
 
-export function Sidebar({ email, name }: SidebarProps) {
+export function Sidebar({ email, name, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
+
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    onMobileClose?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
 
   function isActive(href: string) {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -57,7 +66,11 @@ export function Sidebar({ email, name }: SidebarProps) {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 bg-white border-r border-[#E2EAF4] flex flex-col z-30">
+    <aside
+      className={`fixed inset-y-0 left-0 w-60 bg-white border-r border-[#E2EAF4] flex flex-col z-30 transition-transform duration-300 ${
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}
+    >
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-[#E2EAF4] shrink-0">
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-taxly-700 shrink-0">
@@ -67,6 +80,17 @@ export function Sidebar({ email, name }: SidebarProps) {
           </svg>
         </div>
         <span className="text-[15px] font-bold tracking-tight text-[#0D1B3E]">Taxly</span>
+
+        {/* Close button — mobile only */}
+        <button
+          onClick={onMobileClose}
+          className="ml-auto flex md:hidden items-center justify-center w-7 h-7 rounded-lg hover:bg-[#F4F6FB] text-[#8FA3C0]"
+          aria-label="Închide meniu"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor"/>
+          </svg>
+        </button>
       </div>
 
       {/* Nav */}
