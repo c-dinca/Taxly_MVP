@@ -22,6 +22,8 @@ interface InvoicePreviewProps {
   mentiuni: string
   userName: string
   originalInvoiceNumber?: string
+  /** Removes outer card wrapper — use when InvoicePreview is already inside a modal/card */
+  flat?: boolean
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -41,7 +43,7 @@ function fmtDate(d: string) {
 
 export function InvoicePreview({
   type, issueDate, dueDate, currency, client, lines,
-  remiseGenerala, acomptes, mentiuni, userName, originalInvoiceNumber,
+  remiseGenerala, acomptes, mentiuni, userName, originalInvoiceNumber, flat,
 }: InvoicePreviewProps) {
   const calcs = lines.map(lineCalc)
 
@@ -67,7 +69,7 @@ export function InvoicePreview({
   const isStorno = type === 'storno'
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed">
+    <div className={flat ? 'overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed' : 'bg-white rounded-xl shadow-lg overflow-hidden text-[#0D1B3E] text-[13px] leading-relaxed'}>
       {/* Header stripe */}
       <div className="bg-taxly-700 px-6 py-5">
         <div className="flex items-start justify-between">
@@ -183,10 +185,10 @@ export function InvoicePreview({
           {hasRemise && (
             <>
               {totalRemiseLinii > 0 && (
-                <Row label="Remisă pe linii" value={`−${fmt(totalRemiseLinii)} ${currency}`} accent="red" />
+                <Row label="Reduceri comerciale pe linii" value={`−${fmt(totalRemiseLinii)} ${currency}`} accent="red" />
               )}
               {remiseGenerala > 0 && (
-                <Row label={`Remisă generală (${remiseGenerala}%)`} value={`−${fmt(remiseGeneralaAmount)} ${currency}`} accent="red" />
+                <Row label={`Reducere comercială globală (${remiseGenerala}%)`} value={`−${fmt(remiseGeneralaAmount)} ${currency}`} accent="red" />
               )}
             </>
           )}

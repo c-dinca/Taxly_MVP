@@ -10,7 +10,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
   proforma: 'Factură proformă',
   deviz: 'Deviz',
   avans: 'Factură de avans',
-  storno: 'Factură storno',
+  storno: 'Factură storno / Notă de creditare',
 }
 
 function fmtDate(dateStr: string) {
@@ -102,8 +102,9 @@ export function EmitConfirmModal({
         <div className="px-6 py-5 space-y-5">
           {/* Description */}
           <p className="text-sm text-[#5A6A8A] text-center leading-relaxed">
-            Ești pe cale să validezi documentu. Asta înseamnă că nu vei mai putea
-            edita informațiile sale, dar vei putea în continuare crea avoirs. Te rugăm să verifici rezumatul informațiilor documentului tău mai jos.
+            Ești pe cale să validezi ciorna documentului tău. Aceasta înseamnă că nu vei mai putea
+            edita informațiile sale, dar vei putea în continuare emite note de creditare, facturi
+            de avans sau aconturi pe aceasta. Te rugăm să verifici rezumatul informațiilor mai jos.
           </p>
 
           {/* Warning — always shown */}

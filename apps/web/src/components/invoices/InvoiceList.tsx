@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import type { Client, Invoice, InvoiceStatus } from '@taxly/types'
+import type { Client, Invoice, InvoiceStatus, InvoiceType } from '@taxly/types'
 import { apiRequest } from '@/lib/api'
 import { useAuthToken } from '@/hooks/useAuthToken'
 import { PaymentModal } from './PaymentModal'
@@ -12,8 +12,6 @@ import { StornoModal } from './StornoModal'
 import type { LineData } from './InvoiceLineRow'
 
 interface InvoiceListProps {}
-
-type FilterTab = 'toate' | 'draft' | 'emise' | 'incasate'
 
 const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-600' },
@@ -25,11 +23,25 @@ const STATUS_BADGE: Record<InvoiceStatus, { label: string; className: string }> 
   anulata: { label: 'Anulată', className: 'bg-red-50 text-red-600' },
 }
 
-const TABS: { value: FilterTab; label: string }[] = [
-  { value: 'toate', label: 'Toate' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'emise', label: 'Emise' },
-  { value: 'incasate', label: 'Încasate' },
+const TYPE_LABEL: Record<InvoiceType, string> = {
+  factura: 'Factură',
+  deviz: 'Deviz',
+  storno: 'Notă de credit',
+  avans: 'Avans',
+  proforma: 'Proformă',
+}
+
+const DOC_TABS: {
+  value: InvoiceType
+  label: string
+  emptyLabel: string
+  newLabel: string
+}[] = [
+  { value: 'factura', label: 'Facturi', emptyLabel: 'Nu există facturi încă', newLabel: '+ Factură nouă' },
+  { value: 'deviz', label: 'Devize', emptyLabel: 'Nu există devize încă', newLabel: '+ Deviz nou' },
+  { value: 'storno', label: 'Note de credit', emptyLabel: 'Nu există note de credit', newLabel: '' },
+  { value: 'avans', label: 'Avans', emptyLabel: 'Nu există facturi de avans', newLabel: '+ Avans nou' },
+  { value: 'proforma', label: 'Proformă', emptyLabel: 'Nu există facturi proformă', newLabel: '+ Proformă nouă' },
 ]
 
 function formatDate(dateStr: string) {
@@ -48,12 +60,11 @@ export function InvoiceList({}: InvoiceListProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<FilterTab>('toate')
+  const [tab, setTab] = useState<InvoiceType>('factura')
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null)
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null)
   const [stornoInvoice, setStornoInvoice] = useState<Invoice | null>(null)
 
-  // Dropdown portal state
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -69,11 +80,10 @@ export function InvoiceList({}: InvoiceListProps) {
     setError(null)
     apiRequest<{ invoices: Invoice[] }>('/api/invoices', { token })
       .then(data => setInvoices(data.invoices))
-      .catch(err => setError(err instanceof Error ? err.message : 'Eroare la încărcarea facturilor'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Eroare la încărcarea documentelor'))
       .finally(() => setLoading(false))
   }
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!openDropdown) return
     function close(e: MouseEvent) {
@@ -103,7 +113,6 @@ export function InvoiceList({}: InvoiceListProps) {
 
   function handleStornoCreated(storno: Invoice) {
     setInvoices(prev => {
-      // Adaugă nota de credit în listă și actualizează factura originală dacă a fost anulată
       const updated = prev.map(inv =>
         inv._id === storno.originalInvoiceId ? { ...inv, status: 'anulata' as const } : inv,
       )
@@ -113,7 +122,8 @@ export function InvoiceList({}: InvoiceListProps) {
 
   async function handleCancel(inv: Invoice) {
     if (!token) return
-    if (!window.confirm(`Anulezi factura ${inv.fullNumber ?? `${inv.series}${inv.number}`}? Această acțiune nu poate fi anulată.`)) return
+    const label = inv.fullNumber ?? `${inv.series}${inv.number}`
+    if (!window.confirm(`Anulezi documentul ${label}? Această acțiune nu poate fi anulată.`)) return
     try {
       const res = await apiRequest<{ invoice: Invoice }>(`/api/invoices/${inv._id}/status`, {
         method: 'PUT',
@@ -126,12 +136,50 @@ export function InvoiceList({}: InvoiceListProps) {
     }
   }
 
-  const filtered = invoices.filter(inv => {
-    if (tab === 'draft') return inv.status === 'draft'
-    if (tab === 'emise') return inv.status === 'emisa' || inv.status === 'trimisa_anaf' || inv.status === 'validata_anaf'
-    if (tab === 'incasate') return inv.status === 'incasata'
-    return true
-  })
+  function getAssociated(inv: Invoice): Invoice[] {
+    const result: Invoice[] = []
+    // Original document (if this is a storno)
+    if (inv.originalInvoiceId) {
+      const original = invoices.find(i => i._id === inv.originalInvoiceId)
+      if (original) result.push(original)
+    }
+    // Stornos / notes de credit linked to this document
+    const linked = invoices.filter(i => i.originalInvoiceId === inv._id)
+    result.push(...linked)
+    return result
+  }
+
+  const activeTab = DOC_TABS.find(t => t.value === tab)!
+  const filtered = invoices.filter(inv => inv.type === tab)
+  const countByType = invoices.reduce<Record<string, number>>((acc, inv) => {
+    acc[inv.type] = (acc[inv.type] ?? 0) + 1
+    return acc
+  }, {})
+
+  const previewAssociated = previewInvoice ? getAssociated(previewInvoice) : []
+
+  function toLineData(l: Invoice['lines'][number]): LineData {
+    return {
+      reference: '',
+      title: l.description,
+      description: '',
+      category: '',
+      quantity: l.quantity,
+      unit: l.unit,
+      unitPrice: l.unitPrice,
+      vatRate: l.vatRate,
+      remise: 0,
+    }
+  }
+
+  function toAcompte(a: Invoice['acomptes'][number]): Acompte {
+    return {
+      id: a._id,
+      description: a.description,
+      date: a.date,
+      amount: a.amount,
+    }
+  }
 
   return (
     <>
@@ -151,7 +199,7 @@ export function InvoiceList({}: InvoiceListProps) {
         />
       )}
 
-      {/* Dropdown portal — rendered outside table to avoid overflow clipping */}
+      {/* Actions dropdown portal */}
       {openDropdown && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
@@ -164,6 +212,7 @@ export function InvoiceList({}: InvoiceListProps) {
             if (!inv) return null
             const isPayable = PAYABLE_STATUSES.includes(inv.status)
             const isCancelled = inv.status === 'anulata'
+            const isStorno = inv.type === 'storno'
             return (
               <>
                 {isPayable && (
@@ -175,7 +224,7 @@ export function InvoiceList({}: InvoiceListProps) {
                     Încasează
                   </button>
                 )}
-                {!isCancelled && (
+                {!isCancelled && !isStorno && (
                   <>
                     <button
                       className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
@@ -191,13 +240,17 @@ export function InvoiceList({}: InvoiceListProps) {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" stroke="currentColor"/></svg>
                       Re-emite / Duplicat
                     </button>
+                  </>
+                )}
+                {!isCancelled && (
+                  <>
                     <div className="mx-3 my-1 border-t border-[#F4F6FB]" />
                     <button
                       className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-red-50 cursor-pointer w-full text-left text-red-600"
                       onClick={() => { setOpenDropdown(null); handleCancel(inv) }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor"/></svg>
-                      Anulează factura
+                      Anulează
                     </button>
                   </>
                 )}
@@ -205,94 +258,156 @@ export function InvoiceList({}: InvoiceListProps) {
             )
           })()}
         </div>,
-        document.body
+        document.body,
       )}
+
+      {/* Preview modal */}
       {previewInvoice && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setPreviewInvoice(null)}
         >
           <div
-            className="bg-white rounded-xl border border-[#E2EAF4] shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+            className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden max-h-[90vh] transition-all ${previewAssociated.length > 0 ? 'max-w-5xl' : 'max-w-3xl'}`}
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal header */}
+            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2EAF4] flex-shrink-0">
               <div className="flex items-center gap-3">
-                <span className="font-bold text-[#0D1B3E]">
+                <span className="font-mono font-bold text-[#0D1B3E]">
                   {previewInvoice.fullNumber ?? `${previewInvoice.series}${previewInvoice.number}`}
                 </span>
                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[previewInvoice.status].className}`}>
                   {STATUS_BADGE[previewInvoice.status].label}
                 </span>
+                <span className="text-xs text-[#8FA3C0] font-medium">{TYPE_LABEL[previewInvoice.type]}</span>
               </div>
-              <button
-                onClick={() => setPreviewInvoice(null)}
-                className="text-[#5A6A8A] hover:text-[#0D1B3E] transition-colors"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open(`/api/pdf/invoice/${previewInvoice._id}`, '_blank')}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#E2EAF4] bg-white px-3 py-1.5 text-xs font-semibold text-[#5A6A8A] hover:bg-[#F4F6FB] hover:text-taxly-700 transition-colors"
+                  title="Descarcă PDF"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4z" stroke="currentColor" fill="none"/><path d="M4 20h16" stroke="currentColor"/></svg>
+                  Descarcă PDF
+                </button>
+                <button
+                  onClick={() => setPreviewInvoice(null)}
+                  className="text-[#5A6A8A] hover:text-[#0D1B3E] transition-colors"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            {/* Modal body */}
-            <div className="overflow-y-auto flex-1 p-6">
-              <InvoicePreview
-                type={previewInvoice.type}
-                issueDate={previewInvoice.issueDate.split('T')[0]}
-                dueDate={previewInvoice.dueDate ? previewInvoice.dueDate.split('T')[0] : ''}
-                currency={previewInvoice.totals.currency}
-                client={previewInvoice.client as unknown as Client}
-                lines={previewInvoice.lines.map((l): LineData => ({
-                  reference: '',
-                  title: l.description,
-                  description: '',
-                  category: '',
-                  quantity: l.quantity,
-                  unit: l.unit,
-                  unitPrice: l.unitPrice,
-                  vatRate: l.vatRate,
-                  remise: 0,
-                }))}
-                remiseGenerala={previewInvoice.remiseGenerala}
-                acomptes={previewInvoice.acomptes.map((a): Acompte => ({
-                  id: a._id,
-                  description: a.description,
-                  date: a.date,
-                  amount: a.amount,
-                }))}
-                mentiuni={previewInvoice.notes ?? ''}
-                userName=""
-                originalInvoiceNumber={previewInvoice.originalInvoiceNumber}
-              />
+
+            {/* Body */}
+            <div className={`flex flex-1 min-h-0 ${previewAssociated.length > 0 ? 'divide-x divide-[#E2EAF4]' : ''}`}>
+              {/* Main preview */}
+              <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <InvoicePreview
+                  flat
+                  type={previewInvoice.type}
+                  issueDate={previewInvoice.issueDate.split('T')[0]}
+                  dueDate={previewInvoice.dueDate ? previewInvoice.dueDate.split('T')[0] : ''}
+                  currency={previewInvoice.totals.currency}
+                  client={previewInvoice.client as unknown as Client}
+                  lines={previewInvoice.lines.map(toLineData)}
+                  remiseGenerala={previewInvoice.remiseGenerala}
+                  acomptes={previewInvoice.acomptes.map(toAcompte)}
+                  mentiuni={previewInvoice.notes ?? ''}
+                  userName=""
+                  originalInvoiceNumber={previewInvoice.originalInvoiceNumber}
+                />
+              </div>
+
+              {/* Associated documents panel */}
+              {previewAssociated.length > 0 && (
+                <div className="w-72 flex-shrink-0 flex flex-col overflow-hidden bg-[#FAFBFD]">
+                  <div className="px-4 py-3 border-b border-[#E2EAF4] flex-shrink-0">
+                    <p className="text-[10px] font-bold text-[#8FA3C0] uppercase tracking-[0.15em]">
+                      Documente asociate
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-3 space-y-2">
+                    {previewAssociated.map(doc => {
+                      const isOriginal = doc._id === previewInvoice.originalInvoiceId
+                      return (
+                        <button
+                          key={doc._id}
+                          onClick={() => setPreviewInvoice(doc)}
+                          className="w-full text-left rounded-xl border border-[#E2EAF4] bg-white p-3.5 hover:border-taxly-300 hover:shadow-sm transition-all group"
+                        >
+                          {/* Type + relation label */}
+                          <p className="text-[10px] font-bold text-[#8FA3C0] uppercase tracking-wide mb-1.5">
+                            {isOriginal ? '← Document original' : `→ ${TYPE_LABEL[doc.type]}`}
+                          </p>
+                          {/* Number + status */}
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="text-xs font-bold text-taxly-700 font-mono group-hover:text-taxly-800">
+                              {doc.fullNumber ?? `${doc.series}${doc.number}`}
+                            </span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium flex-shrink-0 ${STATUS_BADGE[doc.status].className}`}>
+                              {STATUS_BADGE[doc.status].label}
+                            </span>
+                          </div>
+                          {/* Client + total */}
+                          <p className="text-[11px] text-[#5A6A8A] truncate mb-1">{doc.client.name}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-[#8FA3C0]">{formatDate(doc.issueDate)}</span>
+                            <span className={`text-xs font-semibold ${doc.totals.total < 0 ? 'text-red-600' : 'text-[#0D1B3E]'}`}>
+                              {doc.totals.total.toFixed(2)} {doc.totals.currency}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
       <div className="bg-white rounded-xl border border-[#E2EAF4] shadow-sm p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex gap-1 rounded-lg bg-[#F4F6FB] p-1">
-            {TABS.map(t => (
-              <button
-                key={t.value}
-                onClick={() => setTab(t.value)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  tab === t.value
-                    ? 'bg-white text-taxly-700 shadow-sm'
-                    : 'text-[#5A6A8A] hover:text-taxly-700'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+        {/* Type tabs + new button */}
+        <div className="flex items-center justify-between mb-5 gap-4">
+          <div className="flex gap-0.5 rounded-xl bg-[#F4F6FB] p-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {DOC_TABS.map(t => {
+              const count = countByType[t.value] ?? 0
+              const isActive = tab === t.value
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => setTab(t.value)}
+                  className={`relative whitespace-nowrap px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-white text-taxly-700 shadow-sm'
+                      : 'text-[#5A6A8A] hover:text-taxly-700'
+                  }`}
+                >
+                  {t.label}
+                  {count > 0 && (
+                    <span className={`ml-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] ${
+                      isActive ? 'bg-taxly-100 text-taxly-700' : 'bg-[#E2EAF4] text-[#8FA3C0]'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
-          <button
-            onClick={() => router.push('/invoices/new')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-taxly-700 px-4 py-2 text-sm font-semibold text-white hover:bg-taxly-800 transition-colors"
-          >
-            + Factură nouă
-          </button>
+          {activeTab.newLabel && (
+            <button
+              onClick={() => router.push('/invoices/new')}
+              className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-taxly-700 px-4 py-2 text-sm font-semibold text-white hover:bg-taxly-800 transition-colors"
+            >
+              {activeTab.newLabel}
+            </button>
+          )}
         </div>
 
         {loading && (
@@ -315,7 +430,6 @@ export function InvoiceList({}: InvoiceListProps) {
                 <tr className="border-b border-[#E2EAF4]">
                   <th className="pb-3 text-left font-medium text-[#5A6A8A] pr-4">Număr</th>
                   <th className="pb-3 text-left font-medium text-[#5A6A8A] pr-4">Client</th>
-                  <th className="pb-3 text-left font-medium text-[#5A6A8A] pr-4">Tip</th>
                   <th className="pb-3 text-left font-medium text-[#5A6A8A] pr-4">Dată</th>
                   <th className="pb-3 text-left font-medium text-[#5A6A8A] pr-4">Total</th>
                   <th className="pb-3 text-left font-medium text-[#5A6A8A]">Status</th>
@@ -325,16 +439,24 @@ export function InvoiceList({}: InvoiceListProps) {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-[#8FA3C0]">
-                      Nu există facturi în această categorie
+                    <td colSpan={6} className="py-14 text-center">
+                      <p className="text-[#8FA3C0] text-sm">{activeTab.emptyLabel}</p>
+                      {activeTab.newLabel && (
+                        <button
+                          onClick={() => router.push('/invoices/new')}
+                          className="mt-3 text-xs text-taxly-700 font-semibold hover:underline"
+                        >
+                          {activeTab.newLabel}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )}
                 {filtered.map(inv => {
                   const badge = STATUS_BADGE[inv.status]
                   const isDraft = inv.status === 'draft'
-                  const isPayable = PAYABLE_STATUSES.includes(inv.status)
-                  const isCancelled = inv.status === 'anulata'
+                  const associated = getAssociated(inv)
+                  const linkedStornos = associated.filter(d => d.originalInvoiceId === inv._id)
                   return (
                     <tr
                       key={inv._id}
@@ -347,23 +469,33 @@ export function InvoiceList({}: InvoiceListProps) {
                         }
                       }}
                     >
-                      <td className="py-3 pr-4 font-medium text-taxly-700">
-                        {inv.fullNumber ?? `${inv.series}${inv.number}`}
+                      <td className="py-3 pr-4">
+                        <span className="font-mono font-semibold text-taxly-700">
+                          {inv.fullNumber ?? `${inv.series}${inv.number}`}
+                        </span>
                         {isDraft && (
-                          <span className="ml-1.5 text-[10px] text-[#8FA3C0]">· click pentru editare</span>
+                          <span className="ml-1.5 text-[10px] text-[#8FA3C0]">· draft</span>
+                        )}
+                        {inv.originalInvoiceNumber && (
+                          <p className="text-[10px] text-[#8FA3C0] mt-0.5 font-mono">
+                            ref: {inv.originalInvoiceNumber}
+                          </p>
+                        )}
+                        {linkedStornos.length > 0 && (
+                          <p className="text-[10px] text-amber-600 mt-0.5">
+                            {linkedStornos.length === 1 ? '1 notă de credit' : `${linkedStornos.length} note de credit`}
+                          </p>
                         )}
                       </td>
                       <td className="py-3 pr-4 text-[#0D1B3E]">{inv.client.name}</td>
-                      <td className="py-3 pr-4 text-[#5A6A8A] capitalize">{inv.type}</td>
                       <td className="py-3 pr-4 text-[#5A6A8A]">{formatDate(inv.issueDate)}</td>
                       <td className="py-3 pr-4 font-medium text-[#0D1B3E]">
-                        {inv.totals.total.toFixed(2)} {inv.totals.currency}
+                        <span className={inv.totals.total < 0 ? 'text-red-600' : ''}>
+                          {inv.totals.total.toFixed(2)} {inv.totals.currency}
+                        </span>
                         {inv.acomptes.length > 0 && (
                           <span className="block text-[11px] text-emerald-600">
-                            rest de achitat: {(
-                              inv.totals.total -
-                              inv.acomptes.reduce((s, a) => s + a.amount, 0)
-                            ).toFixed(2)}
+                            rest: {(inv.totals.total - inv.acomptes.reduce((s, a) => s + a.amount, 0)).toFixed(2)}
                           </span>
                         )}
                       </td>
@@ -372,7 +504,6 @@ export function InvoiceList({}: InvoiceListProps) {
                           {badge.label}
                         </span>
                       </td>
-                      {/* Actions column — stopPropagation so row click doesn't fire */}
                       <td className="py-3 text-right" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={(e) => openActionsDropdown(e, inv._id)}

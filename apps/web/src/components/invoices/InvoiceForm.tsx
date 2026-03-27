@@ -485,10 +485,10 @@ export function InvoiceForm({ userName, mode = 'create', initialData }: InvoiceF
               <div className="space-y-1.5 text-sm">
                 <SummaryRow label="Total HT brut" value={`${totalHTBrut.toFixed(2)} ${currency}`} />
                 {totalRemiseLinii > 0 && (
-                  <SummaryRow label="Remisă linii" value={`−${totalRemiseLinii.toFixed(2)} ${currency}`} red />
+                  <SummaryRow label="Reduceri comerciale linii" value={`−${totalRemiseLinii.toFixed(2)} ${currency}`} red />
                 )}
                 {remiseGenerala > 0 && (
-                  <SummaryRow label={`Remisă generală ${remiseGenerala}%`} value={`−${remiseGeneralaAmount.toFixed(2)} ${currency}`} red />
+                  <SummaryRow label={`Reducere comercială globală ${remiseGenerala}%`} value={`−${remiseGeneralaAmount.toFixed(2)} ${currency}`} red />
                 )}
                 <SummaryRow label="Total HT net" value={`${totalHTNet.toFixed(2)} ${currency}`} semi />
                 <SummaryRow label="Total TVA" value={`${totalTVA.toFixed(2)} ${currency}`} />
@@ -545,6 +545,16 @@ export function InvoiceForm({ userName, mode = 'create', initialData }: InvoiceF
                 >
                   Anulează
                 </Button>
+                {mode === 'edit' && initialData?._id && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/api/pdf/invoice/${initialData._id}`, '_blank')}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#E2EAF4] bg-white px-3 py-2 text-sm font-medium text-[#5A6A8A] hover:bg-[#F4F6FB] hover:text-taxly-700 transition-colors"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4z" stroke="currentColor" fill="none"/><path d="M4 20h16" stroke="currentColor"/></svg>
+                    Descarcă PDF
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -25,10 +25,20 @@ interface ListQuery {
   }
 }
 
+const TYPE_PREFIX: Record<string, string> = {
+  factura: 'F',
+  deviz: 'D',
+  storno: 'S',
+  avans: 'A',
+  proforma: 'P',
+}
+
 async function getNextInvoiceNumber(userId: string, year: number): Promise<number> {
+  const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`)
+  const endOfYear = new Date(`${year + 1}-01-01T00:00:00.000Z`)
   const lastInvoice = await Invoice.findOne({
     userId,
-    fullNumber: { $regex: `^TAXLY-${year}-` },
+    issueDate: { $gte: startOfYear, $lt: endOfYear },
   })
     .sort({ number: -1 })
     .select('number')
@@ -128,7 +138,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
       const year = new Date(data.issueDate).getFullYear()
       const number = await getNextInvoiceNumber(sub, year)
-      const fullNumber = `TAXLY-${year}-${String(number).padStart(4, '0')}`
+      const prefix = TYPE_PREFIX[data.type] ?? 'F'
+      const fullNumber = `${prefix}-${year}-${String(number).padStart(4, '0')}`
 
       const built = await buildInvoiceFields(data, client)
 
@@ -385,7 +396,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
       const year = new Date().getFullYear()
       const number = await getNextInvoiceNumber(sub, year)
-      const fullNumber = `TAXLY-${year}-${String(number).padStart(4, '0')}`
+      const fullNumber = `S-${year}-${String(number).padStart(4, '0')}`
 
       const stornoInvoice = await Invoice.create({
         userId: sub,
