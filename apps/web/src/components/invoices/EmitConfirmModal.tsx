@@ -103,8 +103,8 @@ export function EmitConfirmModal({
           {/* Description */}
           <p className="text-sm text-[#5A6A8A] text-center leading-relaxed">
             Ești pe cale să validezi ciorna documentului tău. Aceasta înseamnă că nu vei mai putea
-            edita informațiile sale, dar vei putea în continuare emite note de creditare, facturi
-            de avans sau aconturi pe aceasta. Te rugăm să verifici rezumatul informațiilor mai jos.
+            edita informațiile sale, dar vei putea în continuare emite note de creditare și facturi
+            de avans. Te rugăm să verifici rezumatul informațiilor mai jos.
           </p>
 
           {/* Warning — always shown */}

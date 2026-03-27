@@ -215,6 +215,14 @@ export function InvoiceList({}: InvoiceListProps) {
             const isStorno = inv.type === 'storno'
             return (
               <>
+                <button
+                  className="px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
+                  onClick={() => { setOpenDropdown(null); window.open(`/api/pdf/invoice/${inv._id}`, '_blank') }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4z" stroke="currentColor" fill="none"/><path d="M4 20h16" stroke="currentColor"/></svg>
+                  Descarcă PDF
+                </button>
+                <div className="mx-3 my-1 border-t border-[#F4F6FB]" />
                 {isPayable && (
                   <button
                     className="px-4 py-2.5 text-sm flex items-center gap-2.5 hover:bg-[#F4F6FB] cursor-pointer w-full text-left text-[#0D1B3E]"
