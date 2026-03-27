@@ -50,7 +50,7 @@ export async function GET(
     const invoice = invoiceData.invoice
 
     // Fetch user profile for emitent info
-    let emitent: { name: string; cui?: string; regCom?: string; address?: string } = {
+    let emitent: { name: string; cui?: string; regCom?: string; address?: string; iban?: string; bank?: string } = {
       name: session.user?.name ?? 'Emitent',
     }
     try {
@@ -60,7 +60,7 @@ export async function GET(
       })
       if (profileRes.ok) {
         const profileData = (await profileRes.json()) as {
-          user?: { companyName?: string; name?: string; cui?: string; regCom?: string; address?: string }
+          user?: { companyName?: string; name?: string; cui?: string; regCom?: string; address?: string; iban?: string; bank?: string }
         }
         const u = profileData.user
         if (u) {
@@ -69,6 +69,8 @@ export async function GET(
             cui: u.cui,
             regCom: u.regCom,
             address: u.address,
+            iban: u.iban,
+            bank: u.bank,
           }
         }
       }

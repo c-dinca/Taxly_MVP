@@ -16,6 +16,7 @@
     "@fastify/jwt": "^9.1.0",
     "@fastify/rate-limit": "^10.2.2",
     "@fastify/sensible": "^6.0.3",
+    "@sentry/node": "^10.46.0",
     "@taxly/schemas": "workspace:*",
     "@taxly/types": "workspace:*",
     "argon2": "^0.44.0",

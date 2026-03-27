@@ -1,4 +1,6 @@
 import 'dotenv/config'
+import { initSentry, Sentry } from './lib/sentry'
+initSentry() // must be called before anything else
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
@@ -45,6 +47,17 @@ async function main() {
 
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
+  // Sentry error handler — captures unhandled Fastify errors
+  app.setErrorHandler((error, _request, reply) => {
+    const statusCode = (error as { statusCode?: number }).statusCode
+    if (statusCode && statusCode < 500) {
+      return reply.send(error)
+    }
+    Sentry.captureException(error)
+    app.log.error(error)
+    reply.status(500).send({ error: 'Internal Server Error' })
+  })
+
   const port = Number(process.env['PORT'] ?? 4000)
   const host = process.env['HOST'] ?? '0.0.0.0'
 
@@ -52,7 +65,8 @@ async function main() {
   app.log.info(`🚀 Taxly API running at http://${host}:${port}`)
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
+  Sentry.captureException(err)
   console.error(err)
   process.exit(1)
 })

@@ -19,6 +19,8 @@ export interface InvoicePDFProps {
     cui?: string
     regCom?: string
     address?: string
+    iban?: string
+    bank?: string
   }
   lines: Array<{
     description: string
@@ -34,80 +36,258 @@ export interface InvoicePDFProps {
   originalInvoiceNumber?: string
 }
 
-const ACCENT = '#002B67'
-const TEXT = '#0D1B3E'
-const MUTED = '#5A6A8A'
-const LIGHT_BG = '#F4F6FB'
-const BORDER = '#E2EAF4'
-
-const s = StyleSheet.create({
-  page: { fontFamily: 'Helvetica', fontSize: 9, color: TEXT, padding: '32 36 32 36', lineHeight: 1.4 },
-  // Header
-  header: { backgroundColor: ACCENT, padding: '14 18', marginHorizontal: -36, marginTop: -32, marginBottom: 18 },
-  headerTitle: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Helvetica-Bold', letterSpacing: 1 },
-  headerSub: { color: '#A8BFDF', fontSize: 7.5, marginTop: 2, letterSpacing: 0.8 },
-  headerRight: { color: '#FFFFFF', fontSize: 11, fontFamily: 'Helvetica-Bold', opacity: 0.75, textAlign: 'right' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  // Credit note banner
-  creditBanner: { backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 0.5, borderRadius: 4, padding: '6 10', marginBottom: 10 },
-  creditBannerText: { color: '#92400E', fontSize: 8, fontFamily: 'Helvetica-Bold' },
-  // Meta
-  metaRow: { flexDirection: 'row', gap: 18, marginBottom: 12, paddingBottom: 10, borderBottomColor: BORDER, borderBottomWidth: 0.5 },
-  metaBlock: {},
-  metaLabel: { color: MUTED, fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
-  metaValue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: TEXT },
-  // Parties
-  partiesRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-  partyBlock: { flex: 1, backgroundColor: LIGHT_BG, borderRadius: 4, padding: '8 10' },
-  partyLabel: { color: MUTED, fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  partyName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: TEXT, marginBottom: 2 },
-  partyDetail: { color: MUTED, fontSize: 8, lineHeight: 1.5 },
-  // Table
-  tableHeader: { flexDirection: 'row', backgroundColor: ACCENT, borderRadius: 3, padding: '5 6', marginBottom: 1 },
-  tableRow: { flexDirection: 'row', borderBottomColor: BORDER, borderBottomWidth: 0.5, padding: '4 6' },
-  tableRowAlt: { flexDirection: 'row', backgroundColor: LIGHT_BG, borderBottomColor: BORDER, borderBottomWidth: 0.5, padding: '4 6' },
-  thText: { color: '#FFFFFF', fontSize: 7.5, fontFamily: 'Helvetica-Bold' },
-  tdText: { color: TEXT, fontSize: 8 },
-  // Column widths
-  colNr: { width: 22 },
-  colDesc: { flex: 1 },
-  colUm: { width: 32 },
-  colQty: { width: 38, textAlign: 'right' },
-  colPret: { width: 52, textAlign: 'right' },
-  colTva: { width: 36, textAlign: 'right' },
-  colValHT: { width: 52, textAlign: 'right' },
-  colTvaVal: { width: 48, textAlign: 'right' },
-  colTotal: { width: 54, textAlign: 'right' },
-  // Totals
-  totalsSection: { marginTop: 10, borderTopColor: BORDER, borderTopWidth: 0.5, paddingTop: 8 },
-  totalsRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 3 },
-  totalsLabel: { color: MUTED, fontSize: 8, width: 180, textAlign: 'right', paddingRight: 10 },
-  totalsValue: { fontSize: 8, width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: TEXT },
-  totalsDivider: { borderTopColor: TEXT, borderTopWidth: 1, marginTop: 4, marginBottom: 4 },
-  grandTotalRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 2 },
-  grandTotalLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: TEXT, width: 180, textAlign: 'right', paddingRight: 10 },
-  grandTotalValue: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: ACCENT, width: 80, textAlign: 'right' },
-  restRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, backgroundColor: ACCENT, borderRadius: 4, padding: '6 10' },
-  restLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', width: 180, textAlign: 'right', paddingRight: 10 },
-  restValue: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', width: 80, textAlign: 'right' },
-  // Notes
-  notesSection: { marginTop: 14, borderTopColor: BORDER, borderTopWidth: 0.5, paddingTop: 8 },
-  notesLabel: { color: MUTED, fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  notesText: { color: MUTED, fontSize: 8, lineHeight: 1.6 },
-  // Footer
-  footer: { marginTop: 18, borderTopColor: BORDER, borderTopWidth: 0.5, paddingTop: 6, textAlign: 'center' },
-  footerText: { color: '#8FA3C0', fontSize: 7, textAlign: 'center' },
-})
-
-const TYPE_LABELS: Record<string, string> = {
-  factura: 'FACTURĂ FISCALĂ',
-  nota_credit: 'NOTĂ DE CREDIT',
-  proforma: 'FACTURĂ PROFORMĂ',
-  deviz: 'DEVIZ',
-  avans: 'FACTURĂ DE AVANS',
-  storno: 'FACTURĂ STORNO',
+// ─── Color per document type ───────────────────────────────────────────────
+const TYPE_CONFIG: Record<string, { title: string; subtitle: string; accent: string }> = {
+  factura:     { title: 'FACTURĂ FISCALĂ',   subtitle: 'conf. art. 319 din Legea nr. 227/2015 privind Codul fiscal', accent: '#004AAD' },
+  nota_credit: { title: 'FACTURĂ STORNO',    subtitle: 'Notă de credit · conf. art. 330 din Legea nr. 227/2015',    accent: '#B91C1C' },
+  storno:      { title: 'FACTURĂ STORNO',    subtitle: 'Notă de credit · conf. art. 330 din Legea nr. 227/2015',    accent: '#B91C1C' },
+  proforma:    { title: 'FACTURĂ PROFORMĂ',  subtitle: 'Document fără valoare fiscală',                             accent: '#475569' },
+  deviz:       { title: 'DEVIZ / OFERTĂ',    subtitle: 'Document estimativ de costuri',                             accent: '#3730A3' },
+  avans:       { title: 'FACTURĂ DE AVANS',  subtitle: 'conf. art. 319 din Legea nr. 227/2015 privind Codul fiscal', accent: '#0F766E' },
 }
 
+const LEGAL_TEXT: Record<string, string> = {
+  factura:     'Prezenta factură este documentul fiscal emis în conformitate cu art. 319 din Legea nr. 227/2015 privind Codul fiscal, cu modificările și completările ulterioare.',
+  nota_credit: 'Prezenta notă de credit (factură storno) este emisă în conformitate cu art. 330 din Legea nr. 227/2015 privind Codul fiscal. Documentul reduce/anulează obligațiile fiscale ale facturii de referință.',
+  storno:      'Prezenta notă de credit (factură storno) este emisă în conformitate cu art. 330 din Legea nr. 227/2015 privind Codul fiscal. Documentul reduce/anulează obligațiile fiscale ale facturii de referință.',
+  proforma:    'Factura proformă nu reprezintă un document fiscal și nu generează obligații de TVA. Este valabilă ca ofertă comercială până la emiterea facturii fiscale.',
+  deviz:       'Prezentul deviz este o estimare a costurilor și nu generează obligații fiscale. Prețurile sunt orientative și pot fi modificate la emiterea facturii fiscale.',
+  avans:       'Prezenta factură de avans este documentul fiscal emis în conformitate cu art. 319 din Legea nr. 227/2015 privind Codul fiscal, cu modificările și completările ulterioare.',
+}
+
+// ─── Shared palette ────────────────────────────────────────────────────────
+const TEXT    = '#0D1B3E'
+const MUTED   = '#5A6A8A'
+const FAINT   = '#8FA3C0'
+const BORDER  = '#E2EAF4'
+const LIGHT   = '#F4F6FB'
+const RED     = '#DC2626'
+const GREEN   = '#059669'
+
+// ─── Styles ────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  page: {
+    fontFamily: 'Helvetica',
+    fontSize: 8.5,
+    color: TEXT,
+    paddingTop: 0,
+    paddingBottom: 36,
+    paddingHorizontal: 0,
+    lineHeight: 1.45,
+  },
+
+  // Header (full-bleed, colored by type)
+  header: {
+    paddingHorizontal: 32,
+    paddingTop: 20,
+    paddingBottom: 18,
+  },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerTypeTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  headerTypeSub: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 7,
+    letterSpacing: 0.5,
+  },
+  headerNumber: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: 'Courier-Bold',
+    textAlign: 'right',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  headerMeta: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 7.5,
+    textAlign: 'right',
+  },
+
+  // Credit note banner
+  creditBanner: {
+    marginHorizontal: 32,
+    marginTop: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 0.5,
+    borderColor: '#FCA5A5',
+    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  creditBannerText: {
+    color: '#991B1B',
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+  },
+
+  // Content wrapper
+  content: {
+    paddingHorizontal: 32,
+    paddingTop: 14,
+  },
+
+  // Parties
+  partiesRow: {
+    flexDirection: 'row',
+    borderWidth: 0.5,
+    borderColor: BORDER,
+    borderRadius: 4,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  partyBlock: { flex: 1, paddingVertical: 10, paddingHorizontal: 12 },
+  partyDivider: { width: 0.5, backgroundColor: BORDER },
+  partyRoleLabel: {
+    fontSize: 6.5,
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    marginBottom: 5,
+  },
+  partyName: {
+    fontSize: 9.5,
+    fontFamily: 'Helvetica-Bold',
+    color: TEXT,
+    marginBottom: 3,
+  },
+  partyDetail: {
+    fontSize: 7.5,
+    color: MUTED,
+    lineHeight: 1.55,
+  },
+  partyDetailLabel: {
+    color: FAINT,
+  },
+
+  // Table
+  tableWrapper: { marginBottom: 10 },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+  thText: { color: '#FFFFFF', fontSize: 7, fontFamily: 'Helvetica-Bold' },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+  },
+  tableRowAlt: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+    backgroundColor: LIGHT,
+  },
+  tdText: { fontSize: 8, color: TEXT },
+  tdMono: { fontSize: 8, color: TEXT, fontFamily: 'Courier' },
+  tdMuted: { fontSize: 8, color: MUTED },
+  tdRed: { fontSize: 8, color: RED },
+
+  // Column widths
+  cNr:   { width: 18 },
+  cDesc: { flex: 1 },
+  cUm:   { width: 26, textAlign: 'center' },
+  cQty:  { width: 34, textAlign: 'right' },
+  cPret: { width: 54, textAlign: 'right' },
+  cDisc: { width: 26, textAlign: 'right' },
+  cTva:  { width: 34, textAlign: 'right' },
+  cVal:  { width: 54, textAlign: 'right' },
+
+  // Totals
+  totalsSection: { marginTop: 6, alignItems: 'flex-end' },
+  totalsInner: { width: 240 },
+  tRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2.5 },
+  tLabel: { fontSize: 8, color: MUTED, flex: 1, textAlign: 'right', paddingRight: 8 },
+  tValue: { fontSize: 8, fontFamily: 'Courier', color: TEXT, width: 80, textAlign: 'right' },
+  tLabelSemi: { fontSize: 8, color: TEXT, fontFamily: 'Helvetica-Bold', flex: 1, textAlign: 'right', paddingRight: 8 },
+  tValueSemi: { fontSize: 8, fontFamily: 'Courier-Bold', color: TEXT, width: 80, textAlign: 'right' },
+  tLabelRed: { fontSize: 8, color: RED, flex: 1, textAlign: 'right', paddingRight: 8 },
+  tValueRed: { fontSize: 8, fontFamily: 'Courier', color: RED, width: 80, textAlign: 'right' },
+  tLabelGreen: { fontSize: 8, color: GREEN, flex: 1, textAlign: 'right', paddingRight: 8 },
+  tValueGreen: { fontSize: 8, fontFamily: 'Courier', color: GREEN, width: 80, textAlign: 'right' },
+  tDivider: { borderTopWidth: 0.5, borderTopColor: BORDER, marginVertical: 4 },
+  tDividerStrong: { borderTopWidth: 1, borderTopColor: TEXT, marginVertical: 5 },
+  grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  grandTotalLabel: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: TEXT, flex: 1, textAlign: 'right', paddingRight: 8 },
+  grandTotalValue: { fontSize: 11, fontFamily: 'Courier-Bold', color: TEXT, width: 80, textAlign: 'right' },
+  restRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+  },
+  restLabel: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', flex: 1, textAlign: 'right', paddingRight: 8 },
+  restValue: { fontSize: 11, fontFamily: 'Courier-Bold', color: '#FFFFFF', width: 80, textAlign: 'right' },
+
+  // Legal text
+  legalSection: {
+    marginTop: 14,
+    backgroundColor: LIGHT,
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  legalText: { fontSize: 7, color: FAINT, lineHeight: 1.6 },
+
+  // Notes
+  notesSection: { marginTop: 10 },
+  notesLabel: {
+    fontSize: 6.5,
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    color: FAINT,
+    marginBottom: 3,
+  },
+  notesText: { fontSize: 7.5, color: MUTED, lineHeight: 1.6 },
+
+  // Signatures
+  signRow: { flexDirection: 'row', gap: 20, marginTop: 16 },
+  signBlock: { flex: 1 },
+  signLabel: {
+    fontSize: 6.5,
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    color: FAINT,
+    marginBottom: 20,
+  },
+  signLine: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+    borderBottomStyle: 'dashed',
+    marginBottom: 4,
+  },
+  signName: { fontSize: 7.5, color: FAINT },
+
+  // Footer
+  footer: {
+    marginTop: 18,
+    paddingTop: 8,
+    paddingHorizontal: 32,
+    borderTopWidth: 0.5,
+    borderTopColor: BORDER,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  footerText: { fontSize: 7, color: '#C8D5E8', textTransform: 'uppercase', letterSpacing: 0.8 },
+})
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
 function fmt(n: number): string {
   return n.toFixed(2)
 }
@@ -119,207 +299,304 @@ function fmtDate(d: string): string {
   return `${parts[2]}.${parts[1]}.${parts[0]}`
 }
 
+// ─── Component ─────────────────────────────────────────────────────────────
 export function InvoicePDF({
   type, number, issueDate, dueDate, currency,
   client, emitent, lines, remiseGenerala = 0,
   acomptes = 0, mentiuni, originalInvoiceNumber,
 }: InvoicePDFProps) {
-  // Line calculations
+  const cfg   = TYPE_CONFIG[type] ?? TYPE_CONFIG['factura']
+  const legal = LEGAL_TEXT[type]  ?? LEGAL_TEXT['factura']
+  const isStorno = type === 'storno' || type === 'nota_credit'
+
+  // ── Calculations ──
   const lineCalcs = lines.map(l => {
-    const baseHT = l.quantity * l.unitPriceHT
+    const baseHT   = l.quantity * l.unitPriceHT
     const remiseAmt = baseHT * ((l.remise ?? 0) / 100)
-    const netHT = baseHT - remiseAmt
-    const tvaAmt = netHT * (l.tvaRate / 100)
-    return { baseHT, remiseAmt, netHT, tvaAmt, totalTTC: netHT + tvaAmt }
+    const netHT    = baseHT - remiseAmt
+    const tvaAmt   = netHT * (l.tvaRate / 100)
+    return { baseHT, remiseAmt, netHT, tvaAmt }
   })
 
-  const totalHTBrut = lineCalcs.reduce((s, c) => s + c.baseHT, 0)
-  const totalHTNetLinii = lineCalcs.reduce((s, c) => s + c.netHT, 0)
+  const totalHTBrut      = lineCalcs.reduce((s, c) => s + c.baseHT, 0)
+  const totalRemiseLinii = lineCalcs.reduce((s, c) => s + c.remiseAmt, 0)
+  const totalHTNetLinii  = lineCalcs.reduce((s, c) => s + c.netHT, 0)
   const remiseGeneralaAmount = totalHTNetLinii * (remiseGenerala / 100)
   const totalHTNet = totalHTNetLinii - remiseGeneralaAmount
-  const factor = 1 - remiseGenerala / 100
+  const factor     = 1 - remiseGenerala / 100
 
-  // TVA breakdown by rate
-  const tvaByRate: Record<number, number> = {}
+  const tvaByRate: Record<number, { base: number; tva: number }> = {}
   lines.forEach((l, i) => {
-    const adjustedNet = lineCalcs[i].netHT * factor
-    tvaByRate[l.tvaRate] = (tvaByRate[l.tvaRate] ?? 0) + adjustedNet * (l.tvaRate / 100)
+    const base = lineCalcs[i].netHT * factor
+    const tva  = base * (l.tvaRate / 100)
+    if (!tvaByRate[l.tvaRate]) tvaByRate[l.tvaRate] = { base: 0, tva: 0 }
+    tvaByRate[l.tvaRate].base += base
+    tvaByRate[l.tvaRate].tva  += tva
   })
-  const totalTVA = Object.values(tvaByRate).reduce((s, v) => s + v, 0)
-  const totalTTC = totalHTNet + totalTVA
+  const totalTVA  = Object.values(tvaByRate).reduce((s, v) => s + v.tva, 0)
+  const totalTTC  = totalHTNet + totalTVA
   const restDeAchitat = totalTTC - acomptes
 
-  const hasRemise = remiseGenerala > 0 || lines.some(l => (l.remise ?? 0) > 0)
+  const hasRemise   = remiseGenerala > 0 || lines.some(l => (l.remise ?? 0) > 0)
   const hasAcomptes = acomptes > 0
+  const displayTotal = hasAcomptes ? restDeAchitat : totalTTC
 
   return (
     <Document
-      title={`${TYPE_LABELS[type] ?? 'FACTURĂ'} ${number}`}
+      title={`${cfg.title} ${number}`}
       author="Taxly"
       creator="Taxly"
     >
       <Page size="A4" style={s.page}>
-        {/* Header */}
-        <View style={s.header}>
+
+        {/* ── Header (full-bleed color strip) ── */}
+        <View style={[s.header, { backgroundColor: cfg.accent }]}>
           <View style={s.headerRow}>
             <View>
-              <Text style={s.headerTitle}>{TYPE_LABELS[type] ?? 'FACTURĂ FISCALĂ'}</Text>
-              <Text style={s.headerSub}>Document fiscal român</Text>
+              <Text style={s.headerTypeTitle}>{cfg.title}</Text>
+              <Text style={s.headerTypeSub}>{cfg.subtitle}</Text>
             </View>
             <View>
-              <Text style={s.headerRight}>{number}</Text>
+              <Text style={s.headerNumber}>{number}</Text>
+              <Text style={s.headerMeta}>
+                {fmtDate(issueDate)}
+                {dueDate ? `  ·  scad. ${fmtDate(dueDate)}` : ''}
+                {'  ·  '}{currency}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Credit note banner */}
-        {(type === 'nota_credit' || type === 'storno') && originalInvoiceNumber && (
+        {/* ── Credit note banner ── */}
+        {isStorno && originalInvoiceNumber && (
           <View style={s.creditBanner}>
             <Text style={s.creditBannerText}>
-              Notă de credit pentru factura {originalInvoiceNumber}
+              Notă de credit emisă pentru factura {originalInvoiceNumber}
             </Text>
           </View>
         )}
 
-        {/* Meta */}
-        <View style={s.metaRow}>
-          <View style={s.metaBlock}>
-            <Text style={s.metaLabel}>Data emiterii</Text>
-            <Text style={s.metaValue}>{fmtDate(issueDate)}</Text>
-          </View>
-          {dueDate && (
-            <View style={s.metaBlock}>
-              <Text style={s.metaLabel}>Scadență</Text>
-              <Text style={s.metaValue}>{fmtDate(dueDate)}</Text>
+        {/* ── Content ── */}
+        <View style={s.content}>
+
+          {/* ── Furnizor / Beneficiar ── */}
+          <View style={s.partiesRow}>
+            {/* Furnizor */}
+            <View style={s.partyBlock}>
+              <Text style={[s.partyRoleLabel, { color: cfg.accent }]}>Furnizor</Text>
+              <Text style={s.partyName}>{emitent.name}</Text>
+              {emitent.address && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>Adresă: </Text>{emitent.address}
+                </Text>
+              )}
+              {emitent.cui && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>CUI: </Text>{emitent.cui}
+                </Text>
+              )}
+              {emitent.regCom && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>Reg. Com.: </Text>{emitent.regCom}
+                </Text>
+              )}
+              {emitent.iban && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>IBAN: </Text>{emitent.iban}
+                </Text>
+              )}
+              {emitent.bank && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>Bancă: </Text>{emitent.bank}
+                </Text>
+              )}
             </View>
-          )}
-          <View style={s.metaBlock}>
-            <Text style={s.metaLabel}>Valută</Text>
-            <Text style={s.metaValue}>{currency}</Text>
-          </View>
-        </View>
 
-        {/* Parties */}
-        <View style={s.partiesRow}>
-          <View style={s.partyBlock}>
-            <Text style={s.partyLabel}>Emitent (Furnizor)</Text>
-            <Text style={s.partyName}>{emitent.name}</Text>
-            {emitent.cui && <Text style={s.partyDetail}>CUI: {emitent.cui}</Text>}
-            {emitent.regCom && <Text style={s.partyDetail}>Reg. Com.: {emitent.regCom}</Text>}
-            {emitent.address && <Text style={s.partyDetail}>{emitent.address}</Text>}
-          </View>
-          <View style={s.partyBlock}>
-            <Text style={s.partyLabel}>Client (Beneficiar)</Text>
-            <Text style={s.partyName}>{client.name}</Text>
-            {client.cui && <Text style={s.partyDetail}>CUI: {client.cui}</Text>}
-            {client.regCom && <Text style={s.partyDetail}>Reg. Com.: {client.regCom}</Text>}
-            {client.address && <Text style={s.partyDetail}>{client.address}</Text>}
-            {(client.city || client.county) && (
-              <Text style={s.partyDetail}>{[client.city, client.county].filter(Boolean).join(', ')}</Text>
-            )}
-          </View>
-        </View>
+            <View style={s.partyDivider} />
 
-        {/* Line items table */}
-        {lines.length > 0 && (
-          <View>
-            <View style={s.tableHeader}>
-              <Text style={[s.thText, s.colNr]}>Nr.</Text>
-              <Text style={[s.thText, s.colDesc]}>Descriere</Text>
-              <Text style={[s.thText, s.colUm]}>UM</Text>
-              <Text style={[s.thText, s.colQty]}>Cant.</Text>
-              <Text style={[s.thText, s.colPret]}>Preț HT</Text>
-              <Text style={[s.thText, s.colTva]}>TVA %</Text>
-              <Text style={[s.thText, s.colValHT]}>Val. HT</Text>
-              <Text style={[s.thText, s.colTvaVal]}>TVA</Text>
-              <Text style={[s.thText, s.colTotal]}>Total</Text>
+            {/* Beneficiar */}
+            <View style={s.partyBlock}>
+              <Text style={[s.partyRoleLabel, { color: FAINT }]}>Beneficiar / Client</Text>
+              <Text style={s.partyName}>{client.name}</Text>
+              {client.address && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>Adresă: </Text>{client.address}
+                </Text>
+              )}
+              {(client.city || client.county) && (
+                <Text style={s.partyDetail}>
+                  {[client.city, client.county].filter(Boolean).join(', ')}
+                </Text>
+              )}
+              {client.cui && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>CUI: </Text>{client.cui}
+                </Text>
+              )}
+              {client.regCom && (
+                <Text style={s.partyDetail}>
+                  <Text style={s.partyDetailLabel}>Reg. Com.: </Text>{client.regCom}
+                </Text>
+              )}
             </View>
-            {lines.map((l, i) => {
-              const c = lineCalcs[i]
-              const rowStyle = i % 2 === 0 ? s.tableRow : s.tableRowAlt
-              return (
-                <View key={i} style={rowStyle}>
-                  <Text style={[s.tdText, s.colNr]}>{i + 1}</Text>
-                  <Text style={[s.tdText, s.colDesc]}>{l.description}</Text>
-                  <Text style={[s.tdText, s.colUm]}>{l.unit ?? 'buc'}</Text>
-                  <Text style={[s.tdText, s.colQty]}>{l.quantity}</Text>
-                  <Text style={[s.tdText, s.colPret]}>{fmt(l.unitPriceHT)}</Text>
-                  <Text style={[s.tdText, s.colTva]}>{l.tvaRate}%</Text>
-                  <Text style={[s.tdText, s.colValHT]}>{fmt(c.netHT)}</Text>
-                  <Text style={[s.tdText, s.colTvaVal]}>{fmt(c.tvaAmt)}</Text>
-                  <Text style={[s.tdText, s.colTotal]}>{fmt(c.totalTTC)}</Text>
-                </View>
-              )
-            })}
-          </View>
-        )}
-
-        {/* Totals */}
-        <View style={s.totalsSection}>
-          <View style={s.totalsRow}>
-            <Text style={s.totalsLabel}>Bază impozabilă (Total HT brut)</Text>
-            <Text style={s.totalsValue}>{fmt(totalHTBrut)} {currency}</Text>
           </View>
 
-          {hasRemise && remiseGenerala > 0 && (
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Remisă globală ({remiseGenerala}%)</Text>
-              <Text style={[s.totalsValue, { color: '#EF4444' }]}>-{fmt(remiseGeneralaAmount)} {currency}</Text>
-            </View>
-          )}
-
-          <View style={s.totalsRow}>
-            <Text style={[s.totalsLabel, { fontFamily: 'Helvetica-Bold', color: TEXT }]}>Total bază impozabilă netă</Text>
-            <Text style={[s.totalsValue, { color: TEXT }]}>{fmt(totalHTNet)} {currency}</Text>
-          </View>
-
-          {Object.entries(tvaByRate)
-            .filter(([, v]) => Math.abs(v) > 0.001)
-            .sort(([a], [b]) => Number(b) - Number(a))
-            .map(([rate, amount]) => (
-              <View key={rate} style={s.totalsRow}>
-                <Text style={s.totalsLabel}>TVA {rate}%</Text>
-                <Text style={s.totalsValue}>{fmt(amount)} {currency}</Text>
+          {/* ── Line items table ── */}
+          {lines.length > 0 && (
+            <View style={s.tableWrapper}>
+              {/* Table header */}
+              <View style={[s.tableHeader, { backgroundColor: cfg.accent }]}>
+                <Text style={[s.thText, s.cNr]}>#</Text>
+                <Text style={[s.thText, s.cDesc]}>Denumire produs / serviciu</Text>
+                <Text style={[s.thText, s.cUm]}>U.M.</Text>
+                <Text style={[s.thText, s.cQty]}>Cant.</Text>
+                <Text style={[s.thText, s.cPret]}>Preț unit. fără TVA</Text>
+                <Text style={[s.thText, s.cDisc]}>Disc.</Text>
+                <Text style={[s.thText, s.cTva]}>Cotă TVA</Text>
+                <Text style={[s.thText, s.cVal]}>Val. fără TVA</Text>
               </View>
-            ))}
 
-          <View style={s.totalsDivider} />
-
-          <View style={s.totalsRow}>
-            <Text style={[s.totalsLabel, { fontFamily: 'Helvetica-Bold', color: TEXT }]}>Total TVA</Text>
-            <Text style={[s.totalsValue, { color: TEXT }]}>{fmt(totalTVA)} {currency}</Text>
-          </View>
-
-          <View style={s.grandTotalRow}>
-            <Text style={s.grandTotalLabel}>Total de plată (cu TVA)</Text>
-            <Text style={s.grandTotalValue}>{fmt(totalTTC)} {currency}</Text>
-          </View>
-
-          {hasAcomptes && (
-            <View style={s.totalsRow}>
-              <Text style={s.totalsLabel}>Din care aconturi</Text>
-              <Text style={[s.totalsValue, { color: '#10B981' }]}>-{fmt(acomptes)} {currency}</Text>
+              {lines.map((l, i) => {
+                const c = lineCalcs[i]
+                const isNeg = l.unitPriceHT < 0 || c.netHT < 0
+                const rowStyle = i % 2 === 1 ? s.tableRowAlt : s.tableRow
+                const numColor = isNeg || isStorno ? RED : TEXT
+                return (
+                  <View key={i} style={rowStyle}>
+                    <Text style={[s.tdMuted, s.cNr]}>{i + 1}</Text>
+                    <Text style={[s.tdText, s.cDesc]}>{l.description}</Text>
+                    <Text style={[s.tdMuted, s.cUm]}>{l.unit ?? 'buc'}</Text>
+                    <Text style={[s.tdMono, s.cQty, { color: numColor }]}>{l.quantity}</Text>
+                    <Text style={[s.tdMono, s.cPret, { color: numColor }]}>{fmt(l.unitPriceHT)}</Text>
+                    <Text style={[s.tdText, s.cDisc]}>
+                      {(l.remise ?? 0) > 0
+                        ? <Text style={{ color: RED }}>{l.remise}%</Text>
+                        : <Text style={{ color: FAINT }}>—</Text>}
+                    </Text>
+                    <Text style={[s.tdMuted, s.cTva]}>{l.tvaRate}%</Text>
+                    <Text style={[s.tdMono, s.cVal, { color: numColor, fontFamily: 'Courier-Bold' }]}>
+                      {fmt(c.netHT)}
+                    </Text>
+                  </View>
+                )
+              })}
             </View>
           )}
 
-          <View style={s.restRow}>
-            <Text style={s.restLabel}>Rest de achitat</Text>
-            <Text style={s.restValue}>{fmt(hasAcomptes ? restDeAchitat : totalTTC)} {currency}</Text>
+          {/* ── Totals ── */}
+          <View style={s.totalsSection}>
+            <View style={s.totalsInner}>
+
+              {/* Subtotal brut */}
+              <View style={s.tRow}>
+                <Text style={s.tLabel}>Valoare totală fără TVA</Text>
+                <Text style={s.tValue}>{fmt(totalHTBrut)} {currency}</Text>
+              </View>
+
+              {/* Discounts */}
+              {hasRemise && (
+                <>
+                  {totalRemiseLinii > 0 && (
+                    <View style={s.tRow}>
+                      <Text style={s.tLabelRed}>Reduceri comerciale (pe linii)</Text>
+                      <Text style={s.tValueRed}>−{fmt(totalRemiseLinii)} {currency}</Text>
+                    </View>
+                  )}
+                  {remiseGenerala > 0 && (
+                    <View style={s.tRow}>
+                      <Text style={s.tLabelRed}>Reducere comercială globală ({remiseGenerala}%)</Text>
+                      <Text style={s.tValueRed}>−{fmt(remiseGeneralaAmount)} {currency}</Text>
+                    </View>
+                  )}
+                  <View style={s.tRow}>
+                    <Text style={s.tLabelSemi}>Bază impozabilă netă</Text>
+                    <Text style={s.tValueSemi}>{fmt(totalHTNet)} {currency}</Text>
+                  </View>
+                </>
+              )}
+
+              {/* TVA by rate */}
+              {Object.entries(tvaByRate)
+                .filter(([, v]) => Math.abs(v.tva) > 0.001)
+                .sort(([a], [b]) => Number(b) - Number(a))
+                .map(([rate, { base, tva }]) => (
+                  <View key={rate} style={s.tRow}>
+                    <Text style={s.tLabel}>TVA {rate}% (bază {fmt(base)} {currency})</Text>
+                    <Text style={s.tValue}>{fmt(tva)} {currency}</Text>
+                  </View>
+                ))}
+
+              {/* Total TVA */}
+              <View style={s.tDivider} />
+              <View style={s.tRow}>
+                <Text style={s.tLabelSemi}>Total TVA</Text>
+                <Text style={s.tValueSemi}>{fmt(totalTVA)} {currency}</Text>
+              </View>
+
+              {/* Grand total */}
+              <View style={s.tDividerStrong} />
+              <View style={s.grandTotalRow}>
+                <Text style={[s.grandTotalLabel, isStorno ? { color: RED } : {}]}>
+                  TOTAL DE PLATĂ (cu TVA)
+                </Text>
+                <Text style={[s.grandTotalValue, isStorno ? { color: RED } : {}]}>
+                  {fmt(totalTTC)} {currency}
+                </Text>
+              </View>
+
+              {/* Aconturi */}
+              {hasAcomptes && (
+                <>
+                  <View style={[s.tDivider, { marginTop: 6 }]} />
+                  <View style={s.tRow}>
+                    <Text style={s.tLabelGreen}>Aconturi deduse</Text>
+                    <Text style={s.tValueGreen}>−{fmt(acomptes)} {currency}</Text>
+                  </View>
+                  <View style={[s.restRow, { backgroundColor: cfg.accent }]}>
+                    <Text style={s.restLabel}>REST DE ACHITAT</Text>
+                    <Text style={s.restValue}>{fmt(displayTotal)} {currency}</Text>
+                  </View>
+                </>
+              )}
+
+            </View>
           </View>
+
+          {/* ── User mentions ── */}
+          {mentiuni && (
+            <View style={s.notesSection}>
+              <Text style={s.notesLabel}>Mențiuni</Text>
+              <Text style={s.notesText}>{mentiuni}</Text>
+            </View>
+          )}
+
+          {/* ── Legal text ── */}
+          <View style={s.legalSection}>
+            <Text style={s.legalText}>{legal}</Text>
+          </View>
+
+          {/* ── Signatures ── */}
+          <View style={s.signRow}>
+            <View style={s.signBlock}>
+              <Text style={s.signLabel}>Furnizor — semnătură și ștampilă</Text>
+              <View style={s.signLine} />
+              <Text style={s.signName}>{emitent.name}</Text>
+            </View>
+            <View style={s.signBlock}>
+              <Text style={s.signLabel}>Beneficiar — confirmare primire</Text>
+              <View style={s.signLine} />
+              <Text style={s.signName}>{client.name}</Text>
+            </View>
+          </View>
+
         </View>
 
-        {/* Mentions */}
-        {mentiuni && (
-          <View style={s.notesSection}>
-            <Text style={s.notesLabel}>Mențiuni</Text>
-            <Text style={s.notesText}>{mentiuni}</Text>
-          </View>
-        )}
-
-        {/* Footer */}
+        {/* ── Footer ── */}
         <View style={s.footer}>
-          <Text style={s.footerText}>Document generat cu Taxly · taxly.ro</Text>
+          <Text style={s.footerText}>Document generat cu Taxly</Text>
+          <Text style={s.footerText}>taxly.ro</Text>
         </View>
+
       </Page>
     </Document>
   )
