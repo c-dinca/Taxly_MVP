@@ -46,6 +46,16 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/fiscal',
+    label: 'Calculator Fiscal',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor"/>
+        <path d="M8 6h8M8 10h2.5M13.5 10h2.5M8 14h2.5M13.5 14h2.5M8 18h2.5M13.5 18h2.5" stroke="currentColor"/>
+      </svg>
+    ),
+  },
 ]
 
 export function Sidebar({ email, name, mobileOpen = false, onMobileClose }: SidebarProps) {

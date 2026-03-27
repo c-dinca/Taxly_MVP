@@ -2,9 +2,38 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+
+const formatRON = (amount: number) =>
+  new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'RON', maximumFractionDigits: 0 }).format(amount)
+
+interface FiscalSummary {
+  venitBrut: number
+  venitLunaAceasta: number
+  totalTaxe: number
+  restInBuzunar: number
+  facturaLunaAceasta: number
+  facturaAnAcesta: number
+}
+
+async function fetchFiscalSummary(token: string): Promise<FiscalSummary | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/fiscal/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 60 },
+    })
+    if (!res.ok) return null
+    return res.json() as Promise<FiscalSummary>
+  } catch {
+    return null
+  }
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   if (!session) redirect('/login')
+
+  const summary = session.accessToken ? await fetchFiscalSummary(session.accessToken) : null
 
   return (
     <div className="px-8 py-8 max-w-5xl">
@@ -19,7 +48,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Facturi emise"
-          value="—"
+          value={summary ? String(summary.facturaLunaAceasta) : '—'}
           sub="luna aceasta"
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-400">
@@ -30,7 +59,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Rest în buzunar"
-          value="—"
+          value={summary ? formatRON(summary.restInBuzunar) : '—'}
           sub="estimat anual"
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-400">
@@ -40,7 +69,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Taxe datorate"
-          value="—"
+          value={summary ? formatRON(summary.totalTaxe) : '—'}
           sub="CAS + CASS + impozit"
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-400">
@@ -101,18 +130,25 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div className="mt-8 rounded-xl bg-taxly-700 px-6 py-5">
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 text-accent-500 mt-0.5">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor"/>
-            </svg>
+      {/* Calculator fiscal link card */}
+      <div className="mt-8">
+        <Link href="/fiscal" className="group flex items-center justify-between rounded-xl bg-taxly-700 px-6 py-5 hover:bg-taxly-900 transition-colors">
+          <div className="flex items-start gap-4">
+            <div className="shrink-0 text-accent-500 mt-0.5">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor"/>
+                <path d="M8 6h8M8 10h3M13 10h3M8 14h3M13 14h3M8 18h3M13 18h3" stroke="currentColor"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Calculator fiscal →</p>
+              <p className="mt-0.5 text-sm text-taxly-100">CAS, CASS și impozit pe venit estimat pentru {new Date().getFullYear()}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Funcționalitățile sunt în construcție</p>
-            <p className="mt-0.5 text-sm text-taxly-100">Calculator fiscal și e-Factura vor fi disponibile în curând.</p>
-          </div>
-        </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-taxly-300 group-hover:text-white transition-colors shrink-0">
+            <path d="M9 18l6-6-6-6" stroke="currentColor"/>
+          </svg>
+        </Link>
       </div>
     </div>
   )

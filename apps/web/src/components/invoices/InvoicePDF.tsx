@@ -1,4 +1,25 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Font, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import path from 'path'
+
+// Register Unicode-capable fonts so Romanian diacritics (ă â î ș ț) render correctly.
+// Standard PDF fonts (Helvetica, Courier) are Latin-1 only and strip diacritics.
+const fontsDir = path.join(process.cwd(), 'public', 'fonts')
+Font.register({
+  family: 'Roboto',
+  fonts: [
+    { src: path.join(fontsDir, 'Roboto-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(fontsDir, 'Roboto-Bold.ttf'),    fontWeight: 700 },
+  ],
+})
+Font.register({
+  family: 'RobotoMono',
+  fonts: [
+    { src: path.join(fontsDir, 'RobotoMono-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(fontsDir, 'RobotoMono-Bold.ttf'),    fontWeight: 700 },
+  ],
+})
+// Disable hyphenation — react-pdf hyphenates Romanian words aggressively otherwise
+Font.registerHyphenationCallback(word => [word])
 
 export interface InvoicePDFProps {
   type: 'factura' | 'nota_credit' | 'proforma' | 'deviz' | 'avans' | 'storno'
@@ -67,7 +88,7 @@ const GREEN   = '#059669'
 // ─── Styles ────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Roboto',
     fontSize: 8.5,
     color: TEXT,
     paddingTop: 0,
@@ -86,7 +107,8 @@ const s = StyleSheet.create({
   headerTypeTitle: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
     letterSpacing: 0.8,
     marginBottom: 3,
   },
@@ -98,7 +120,7 @@ const s = StyleSheet.create({
   headerNumber: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'RobotoMono', fontWeight: 700,
     textAlign: 'right',
     letterSpacing: 0.5,
     marginBottom: 3,
@@ -123,7 +145,8 @@ const s = StyleSheet.create({
   creditBannerText: {
     color: '#991B1B',
     fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
   },
 
   // Content wrapper
@@ -145,14 +168,16 @@ const s = StyleSheet.create({
   partyDivider: { width: 0.5, backgroundColor: BORDER },
   partyRoleLabel: {
     fontSize: 6.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: 0.9,
     marginBottom: 5,
   },
   partyName: {
     fontSize: 9.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
     color: TEXT,
     marginBottom: 3,
   },
@@ -169,40 +194,43 @@ const s = StyleSheet.create({
   tableWrapper: { marginBottom: 10 },
   tableHeader: {
     flexDirection: 'row',
-    paddingVertical: 5,
-    paddingHorizontal: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
+    alignItems: 'center',
   },
-  thText: { color: '#FFFFFF', fontSize: 7, fontFamily: 'Helvetica-Bold' },
+  thText: { color: '#FFFFFF', fontSize: 9, fontFamily: 'Roboto', fontWeight: 700 },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
+    alignItems: 'center',
   },
   tableRowAlt: {
     flexDirection: 'row',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
     backgroundColor: LIGHT,
+    alignItems: 'center',
   },
-  tdText: { fontSize: 8, color: TEXT },
-  tdMono: { fontSize: 8, color: TEXT, fontFamily: 'Courier' },
-  tdMuted: { fontSize: 8, color: MUTED },
-  tdRed: { fontSize: 8, color: RED },
+  tdText: { fontSize: 9, color: TEXT },
+  tdMono: { fontSize: 9, color: TEXT, fontFamily: 'RobotoMono' },
+  tdMuted: { fontSize: 9, color: MUTED },
+  tdRed: { fontSize: 9, color: RED },
 
-  // Column widths
-  cNr:   { width: 18 },
+  // Column widths — sized so no header text wraps on A4 (531pt content width)
+  cNr:   { width: 16 },
   cDesc: { flex: 1 },
   cUm:   { width: 26, textAlign: 'center' },
-  cQty:  { width: 34, textAlign: 'right' },
-  cPret: { width: 54, textAlign: 'right' },
-  cDisc: { width: 26, textAlign: 'right' },
-  cTva:  { width: 34, textAlign: 'right' },
+  cQty:  { width: 30, textAlign: 'right' },
+  cPret: { width: 52, textAlign: 'right' },
+  cDisc: { width: 24, textAlign: 'right' },
+  cTva:  { width: 30, textAlign: 'right' },
   cVal:  { width: 54, textAlign: 'right' },
 
   // Totals
@@ -210,18 +238,18 @@ const s = StyleSheet.create({
   totalsInner: { width: 240 },
   tRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2.5 },
   tLabel: { fontSize: 8, color: MUTED, flex: 1, textAlign: 'right', paddingRight: 8 },
-  tValue: { fontSize: 8, fontFamily: 'Courier', color: TEXT, width: 80, textAlign: 'right' },
-  tLabelSemi: { fontSize: 8, color: TEXT, fontFamily: 'Helvetica-Bold', flex: 1, textAlign: 'right', paddingRight: 8 },
-  tValueSemi: { fontSize: 8, fontFamily: 'Courier-Bold', color: TEXT, width: 80, textAlign: 'right' },
+  tValue: { fontSize: 8, fontFamily: 'RobotoMono', color: TEXT, width: 80, textAlign: 'right' },
+  tLabelSemi: { fontSize: 8, color: TEXT, fontFamily: 'Roboto', fontWeight: 700, flex: 1, textAlign: 'right', paddingRight: 8 },
+  tValueSemi: { fontSize: 8, fontFamily: 'RobotoMono', fontWeight: 700, color: TEXT, width: 80, textAlign: 'right' },
   tLabelRed: { fontSize: 8, color: RED, flex: 1, textAlign: 'right', paddingRight: 8 },
-  tValueRed: { fontSize: 8, fontFamily: 'Courier', color: RED, width: 80, textAlign: 'right' },
+  tValueRed: { fontSize: 8, fontFamily: 'RobotoMono', color: RED, width: 80, textAlign: 'right' },
   tLabelGreen: { fontSize: 8, color: GREEN, flex: 1, textAlign: 'right', paddingRight: 8 },
-  tValueGreen: { fontSize: 8, fontFamily: 'Courier', color: GREEN, width: 80, textAlign: 'right' },
+  tValueGreen: { fontSize: 8, fontFamily: 'RobotoMono', color: GREEN, width: 80, textAlign: 'right' },
   tDivider: { borderTopWidth: 0.5, borderTopColor: BORDER, marginVertical: 4 },
   tDividerStrong: { borderTopWidth: 1, borderTopColor: TEXT, marginVertical: 5 },
   grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
-  grandTotalLabel: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: TEXT, flex: 1, textAlign: 'right', paddingRight: 8 },
-  grandTotalValue: { fontSize: 11, fontFamily: 'Courier-Bold', color: TEXT, width: 80, textAlign: 'right' },
+  grandTotalLabel: { fontSize: 9.5, fontFamily: 'Roboto', fontWeight: 700, color: TEXT, flex: 1, textAlign: 'right', paddingRight: 8 },
+  grandTotalValue: { fontSize: 11, fontFamily: 'RobotoMono', fontWeight: 700, color: TEXT, width: 80, textAlign: 'right' },
   restRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -230,8 +258,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 4,
   },
-  restLabel: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#FFFFFF', flex: 1, textAlign: 'right', paddingRight: 8 },
-  restValue: { fontSize: 11, fontFamily: 'Courier-Bold', color: '#FFFFFF', width: 80, textAlign: 'right' },
+  restLabel: { fontSize: 9.5, fontFamily: 'Roboto', fontWeight: 700, color: '#FFFFFF', flex: 1, textAlign: 'right', paddingRight: 8 },
+  restValue: { fontSize: 11, fontFamily: 'RobotoMono', fontWeight: 700, color: '#FFFFFF', width: 80, textAlign: 'right' },
 
   // Legal text
   legalSection: {
@@ -247,7 +275,8 @@ const s = StyleSheet.create({
   notesSection: { marginTop: 10 },
   notesLabel: {
     fontSize: 6.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: 0.9,
     color: FAINT,
@@ -260,7 +289,8 @@ const s = StyleSheet.create({
   signBlock: { flex: 1 },
   signLabel: {
     fontSize: 6.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: 0.9,
     color: FAINT,
@@ -450,9 +480,9 @@ export function InvoicePDF({
                 <Text style={[s.thText, s.cDesc]}>Denumire produs / serviciu</Text>
                 <Text style={[s.thText, s.cUm]}>U.M.</Text>
                 <Text style={[s.thText, s.cQty]}>Cant.</Text>
-                <Text style={[s.thText, s.cPret]}>Preț unit. fără TVA</Text>
+                <Text style={[s.thText, s.cPret]}>Preț unit.</Text>
                 <Text style={[s.thText, s.cDisc]}>Disc.</Text>
-                <Text style={[s.thText, s.cTva]}>Cotă TVA</Text>
+                <Text style={[s.thText, s.cTva]}>TVA %</Text>
                 <Text style={[s.thText, s.cVal]}>Val. fără TVA</Text>
               </View>
 
@@ -474,7 +504,7 @@ export function InvoicePDF({
                         : <Text style={{ color: FAINT }}>—</Text>}
                     </Text>
                     <Text style={[s.tdMuted, s.cTva]}>{l.tvaRate}%</Text>
-                    <Text style={[s.tdMono, s.cVal, { color: numColor, fontFamily: 'Courier-Bold' }]}>
+                    <Text style={[s.tdMono, s.cVal, { color: numColor, fontFamily: 'RobotoMono', fontWeight: 700 }]}>
                       {fmt(c.netHT)}
                     </Text>
                   </View>
